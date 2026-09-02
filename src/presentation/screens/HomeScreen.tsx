@@ -5,7 +5,7 @@ import { useUserLocation, Address } from '../context/LocationContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { useToast } from '../context/ToastContext';
 import { useCart } from '../context/CartContext';
-import { MapPin, Search, Star, Clock, Heart, SlidersHorizontal, ChevronDown, Check, ShoppingBag, Navigation, Home, Menu, Mic, X, User, Package, LogOut, Smartphone, Truck } from 'lucide-react-native';
+import { MapPin, Search, Star, Clock, Heart, SlidersHorizontal, ChevronDown, Check, ShoppingBag, Navigation, Home, Menu, Mic, X, User, Package, LogOut, Smartphone, Truck, Linkedin, Instagram, Twitter, Youtube, Facebook, Mail, Phone } from 'lucide-react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_WIDTH = SCREEN_WIDTH - 32;
@@ -552,8 +552,107 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                             </View>
                         </View>
 
-                        {/* Bottom Red Footer Strip */}
-                        <View style={styles.bottomBrandFooter} />
+                        {/* Full Red Hivago App Footer */}
+                        <View style={styles.footerContainer}>
+                            {/* Brand White Logo */}
+                            <Text style={styles.footerLogoText}>HIVAGO</Text>
+
+                            {/* 2-Column Footer Grid */}
+                            <View style={styles.footerGrid}>
+                                {/* Column 1 */}
+                                <View style={styles.footerColumn}>
+                                    <Text style={styles.footerSectionHeader}>ABOUT HIVAGO</Text>
+                                    <TouchableOpacity style={styles.footerLinkTouch} onPress={() => showToast("Who We Are", "info")}>
+                                        <Text style={styles.footerLinkText}>Who We Are</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.footerLinkTouch} onPress={() => showToast("Contact Us", "info")}>
+                                        <Text style={styles.footerLinkText}>Contact Us</Text>
+                                    </TouchableOpacity>
+
+                                    <View style={{ height: 24 }} />
+
+                                    <Text style={styles.footerSectionHeader}>FOR RESTAURANTS</Text>
+                                    <TouchableOpacity style={styles.footerLinkTouch} onPress={() => showToast("Partner With Us", "info")}>
+                                        <Text style={styles.footerLinkText}>Partner With Us</Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                                {/* Column 2 */}
+                                <View style={styles.footerColumn}>
+                                    <Text style={styles.footerSectionHeader}>HIVAGOVERSE</Text>
+                                    <TouchableOpacity style={styles.footerLinkTouch} onPress={() => showToast("Hivago", "info")}>
+                                        <Text style={styles.footerLinkText}>Hivago</Text>
+                                    </TouchableOpacity>
+
+                                    <View style={{ height: 44 }} />
+
+                                    <Text style={styles.footerSectionHeader}>LEARN MORE</Text>
+                                    <TouchableOpacity style={styles.footerLinkTouch} onPress={() => showToast("Privacy", "info")}>
+                                        <Text style={styles.footerLinkText}>Privacy</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.footerLinkTouch} onPress={() => showToast("Refund Policy", "info")}>
+                                        <Text style={styles.footerLinkText}>Refund Policy</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.footerLinkTouch} onPress={() => showToast("Terms", "info")}>
+                                        <Text style={styles.footerLinkText}>Terms</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
+                            {/* Social Links Section */}
+                            <View style={styles.socialLinksSection}>
+                                <Text style={styles.footerSectionHeader}>SOCIAL LINKS</Text>
+                                <View style={styles.socialIconsRow}>
+                                    <TouchableOpacity style={styles.socialCircleIcon} onPress={() => showToast("LinkedIn", "info")}>
+                                        <Linkedin size={16} color="#FFFFFF" />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.socialCircleIcon} onPress={() => showToast("Instagram", "info")}>
+                                        <Instagram size={16} color="#FFFFFF" />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.socialCircleIcon} onPress={() => showToast("Twitter", "info")}>
+                                        <Twitter size={16} color="#FFFFFF" />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.socialCircleIcon} onPress={() => showToast("YouTube", "info")}>
+                                        <Youtube size={16} color="#FFFFFF" />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.socialCircleIcon} onPress={() => showToast("Facebook", "info")}>
+                                        <Facebook size={16} color="#FFFFFF" />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
+                            {/* Contact Details Section */}
+                            <View style={styles.contactBlock}>
+                                <View style={styles.contactRow}>
+                                    <MapPin size={18} color="#FFFFFF" style={{ marginRight: 10 }} />
+                                    <Text style={styles.contactBoldText}>Airoli, Mumbai</Text>
+                                </View>
+
+                                <View style={styles.contactRow}>
+                                    <Mail size={18} color="#FFFFFF" style={{ marginRight: 10 }} />
+                                    <Text style={styles.contactRegularText}>info@hivago.in</Text>
+                                </View>
+
+                                <View style={styles.contactRow}>
+                                    <Phone size={18} color="#FFFFFF" style={{ marginRight: 10, marginTop: 2 }} />
+                                    <View>
+                                        <Text style={styles.contactBoldText}>Help & Support</Text>
+                                        <Text style={styles.contactSubText}>+91 9082220155</Text>
+                                    </View>
+                                </View>
+                            </View>
+
+                            {/* Divider Line */}
+                            <View style={styles.footerDivider} />
+
+                            {/* Legal Disclaimer */}
+                            <Text style={styles.legalDisclaimerText}>
+                                By continuing past this page, you agree to our Terms of Service, Cookie Policy, Privacy Policy and Content Policies. All trademarks are properties of their respective owners. 2026 © Hivago™ Ltd. All rights reserved.
+                            </Text>
+
+                            {/* Version Tag */}
+                            <Text style={styles.versionTagText}>v1.0.0</Text>
+                        </View>
                     </>
                 )}
             </ScrollView>
@@ -1497,10 +1596,98 @@ const styles = StyleSheet.create({
         color: '#64748B',
         lineHeight: 17,
     },
-    bottomBrandFooter: {
-        height: 50,
+    footerContainer: {
         backgroundColor: '#A81C1C',
         marginTop: 36,
+        paddingHorizontal: 20,
+        paddingTop: 36,
+        paddingBottom: 40,
         width: '100%',
+    },
+    footerLogoText: {
+        fontSize: 32,
+        fontWeight: '900',
+        color: '#FFFFFF',
+        fontStyle: 'italic',
+        letterSpacing: 2,
+        marginBottom: 28,
+    },
+    footerGrid: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 30,
+    },
+    footerColumn: {
+        flex: 1,
+    },
+    footerSectionHeader: {
+        fontSize: 12,
+        fontWeight: '900',
+        color: '#FFFFFF',
+        letterSpacing: 0.8,
+        marginBottom: 12,
+    },
+    footerLinkTouch: {
+        paddingVertical: 5,
+    },
+    footerLinkText: {
+        fontSize: 13,
+        color: 'rgba(255, 255, 255, 0.85)',
+        fontWeight: '500',
+    },
+    socialLinksSection: {
+        marginBottom: 24,
+    },
+    socialIconsRow: {
+        flexDirection: 'row',
+        gap: 12,
+        marginTop: 4,
+    },
+    socialCircleIcon: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    contactBlock: {
+        marginTop: 8,
+        marginBottom: 24,
+        gap: 12,
+    },
+    contactRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    contactBoldText: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#FFFFFF',
+    },
+    contactRegularText: {
+        fontSize: 13,
+        color: 'rgba(255, 255, 255, 0.9)',
+    },
+    contactSubText: {
+        fontSize: 11,
+        color: 'rgba(255, 255, 255, 0.75)',
+        marginTop: 1,
+    },
+    footerDivider: {
+        height: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        marginVertical: 20,
+    },
+    legalDisclaimerText: {
+        fontSize: 11,
+        color: 'rgba(255, 255, 255, 0.7)',
+        lineHeight: 16,
+        marginBottom: 16,
+    },
+    versionTagText: {
+        fontSize: 11,
+        color: 'rgba(255, 255, 255, 0.5)',
+        fontWeight: '600',
     },
 });
