@@ -492,6 +492,7 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                                 horizontal
                                 showsHorizontalScrollIndicator={false}
                                 contentContainerStyle={styles.horizontalListContent}
+                            />
                         </View>
 
                         {/* Delivery Feature & Info Section */}
