@@ -1282,7 +1282,7 @@ const styles = StyleSheet.create({
     },
     sortOptionRow: {
         flexDirection: 'row',
-        justify.content: 'space-between',
+        justifyContent: 'space-between',
         alignItems: 'center',
         paddingVertical: 14,
         borderBottomWidth: 1,
