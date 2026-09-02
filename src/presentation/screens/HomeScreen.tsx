@@ -16,7 +16,7 @@ const BANNERS = [
         titleHighlight: 'Fast',
         titleRest: 'Food\nDelivery',
         subtitle: 'Order from the best local restaurants with easy on-demand delivery',
-        image: require('../assets/banners/banner1.png'),
+        image: require('../../assets/banners/banner1.png'),
         badgeText: 'FAST FOOD',
         bgColor: '#FFF5F4'
     },
@@ -25,7 +25,7 @@ const BANNERS = [
         titleHighlight: 'Up to 50%',
         titleRest: 'OFF',
         subtitle: 'Special offers & discounts on top rated local dishes',
-        image: require('../assets/banners/banner2.png'),
+        image: require('../../assets/banners/banner2.png'),
         badgeText: 'HOT DEAL',
         bgColor: '#FFFBEB'
     },
@@ -34,7 +34,7 @@ const BANNERS = [
         titleHighlight: 'Super Fast',
         titleRest: 'Delivery',
         subtitle: 'Hot & fresh meals delivered right to your doorstep under 30 mins',
-        image: require('../assets/banners/banner3.png'),
+        image: require('../../assets/banners/banner3.png'),
         badgeText: 'EXPRESS',
         bgColor: '#F0FDF4'
     }
