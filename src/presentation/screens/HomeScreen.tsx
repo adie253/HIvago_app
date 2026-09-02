@@ -1,13 +1,55 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, Image, TouchableOpacity, ScrollView, RefreshControl, Modal, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, FlatList, TextInput, Image, TouchableOpacity, ScrollView, RefreshControl, Modal, ActivityIndicator, Dimensions } from 'react-native';
 import { useFilters, Restaurant } from '../context/FilterContext';
 import { useUserLocation, Address } from '../context/LocationContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { useToast } from '../context/ToastContext';
 import { useCart } from '../context/CartContext';
-import { MapPin, Search, Star, Clock, Heart, SlidersHorizontal, ChevronDown, Check, ShoppingBag, Navigation } from 'lucide-react-native';
+import { MapPin, Search, Star, Clock, Heart, SlidersHorizontal, ChevronDown, Check, ShoppingBag, Navigation, Home, Menu, Mic, X, User, Package, LogOut } from 'lucide-react-native';
 
-const CATEGORIES = ['All', 'Biryani', 'Pizza', 'Burgers', 'North Indian', 'Chinese', 'South Indian', 'Desserts'];
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const BANNER_WIDTH = SCREEN_WIDTH - 32;
+
+const BANNERS = [
+    {
+        id: '1',
+        titleHighlight: 'Fast',
+        titleRest: 'Food\nDelivery',
+        subtitle: 'Order from the best local restaurants with easy on-demand delivery',
+        image: require('../assets/banners/banner1.png'),
+        badgeText: 'FAST FOOD',
+        bgColor: '#FFF5F4'
+    },
+    {
+        id: '2',
+        titleHighlight: 'Up to 50%',
+        titleRest: 'OFF',
+        subtitle: 'Special offers & discounts on top rated local dishes',
+        image: require('../assets/banners/banner2.png'),
+        badgeText: 'HOT DEAL',
+        bgColor: '#FFFBEB'
+    },
+    {
+        id: '3',
+        titleHighlight: 'Super Fast',
+        titleRest: 'Delivery',
+        subtitle: 'Hot & fresh meals delivered right to your doorstep under 30 mins',
+        image: require('../assets/banners/banner3.png'),
+        badgeText: 'EXPRESS',
+        bgColor: '#F0FDF4'
+    }
+];
+
+const CATEGORIES_DATA = [
+    { id: 'All', name: 'All', icon: '🍽️' },
+    { id: 'Burgers', name: 'Burgers', icon: '🍔' },
+    { id: 'Pizza', name: 'Pizza', icon: '🍕' },
+    { id: 'Sushi', name: 'Sushi', icon: '🍣' },
+    { id: 'Tacos', name: 'Tacos', icon: '🌮' },
+    { id: 'North Indian', name: 'North Indian', icon: '🍲' },
+    { id: 'Chinese', name: 'Chinese', icon: '🍜' },
+    { id: 'Desserts', name: 'Desserts', icon: '🍦' },
+];
 
 export const HomeScreen = ({ navigation }: { navigation: any }) => {
     const { 
@@ -25,12 +67,40 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
     const { selectedLocation, addresses, selectLocation, isLoadingGps, useDeviceLocation } = useUserLocation();
     const { toggleFavorite, isFavorite } = useFavorites();
     const { showToast } = useToast();
-    const { cartItems, cartTotal } = useCart();
+    const { cartItems, cartTotal, isLoggedIn, logout } = useCart();
     const isCartNotEmpty = cartItems.length > 0;
 
     const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
     const [isSortModalOpen, setIsSortModalOpen] = useState(false);
+    const [isMenuDrawerOpen, setIsMenuDrawerOpen] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+
+    // Banner Slideshow state & auto-advance timer
+    const [activeBannerIndex, setActiveBannerIndex] = useState(0);
+    const bannerScrollRef = useRef<ScrollView>(null);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setActiveBannerIndex((prevIndex) => {
+                const nextIndex = (prevIndex + 1) % BANNERS.length;
+                bannerScrollRef.current?.scrollTo({
+                    x: nextIndex * BANNER_WIDTH,
+                    animated: true,
+                });
+                return nextIndex;
+            });
+        }, 4000);
+
+        return () => clearInterval(timer);
+    }, []);
+
+    const onBannerScroll = (event: any) => {
+        const contentOffsetX = event.nativeEvent.contentOffset.x;
+        const index = Math.round(contentOffsetX / BANNER_WIDTH);
+        if (index >= 0 && index < BANNERS.length && index !== activeBannerIndex) {
+            setActiveBannerIndex(index);
+        }
+    };
 
     const onRefresh = async () => {
         setRefreshing(true);
@@ -57,11 +127,16 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                             <Text style={styles.discountText}>{item.discount}</Text>
                         </View>
                     )}
+                    {item.acceptsPickup && (
+                        <View style={styles.pickupBadge}>
+                            <Text style={styles.pickupBadgeText}>PICKUP</Text>
+                        </View>
+                    )}
                     <TouchableOpacity 
                         style={styles.favoriteBtn} 
                         onPress={() => toggleFavorite(item)}
                     >
-                        <Heart size={20} color={isFav ? '#FF4732' : '#FFFFFF'} fill={isFav ? '#FF4732' : 'transparent'} />
+                        <Heart size={18} color={isFav ? '#A81C1C' : '#6B7280'} fill={isFav ? '#A81C1C' : 'transparent'} />
                     </TouchableOpacity>
                 </View>
 
@@ -69,7 +144,7 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                     <View style={styles.cardHeader}>
                         <Text style={styles.restaurantName} numberOfLines={1}>{item.name}</Text>
                         <View style={styles.ratingBadge}>
-                            <Star size={14} color="#FFFFFF" fill="#FFFFFF" />
+                            <Star size={12} color="#FFFFFF" fill="#FFFFFF" />
                             <Text style={styles.ratingText}>{item.rating}</Text>
                         </View>
                     </View>
@@ -80,7 +155,7 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
 
                     <View style={styles.cardFooter}>
                         <View style={styles.footerItem}>
-                            <Clock size={14} color="#6B7280" />
+                            <Clock size={12} color="#6B7280" />
                             <Text style={styles.footerText}>{item.deliveryTime}</Text>
                         </View>
                         <Text style={styles.dot}>•</Text>
@@ -95,59 +170,138 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
 
     return (
         <View style={styles.container}>
-            {/* Header Address Bar */}
-            <View style={styles.header}>
+            {/* Top Red Brand Header */}
+            <View style={styles.brandHeader}>
+                <Text style={styles.brandTitle}>HIVAGO</Text>
+                
+                <View style={styles.brandHeaderRight}>
+                    <TouchableOpacity 
+                        style={styles.headerIconButton}
+                        onPress={() => navigation.navigate('Cart')}
+                    >
+                        <ShoppingBag size={22} color="#FFFFFF" />
+                        {cartItems.length > 0 && (
+                            <View style={styles.cartBadge}>
+                                <Text style={styles.cartBadgeText}>
+                                    {cartItems.reduce((sum, i) => sum + i.quantity, 0)}
+                                </Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                        style={styles.headerIconButton}
+                        onPress={() => setIsMenuDrawerOpen(true)}
+                    >
+                        <Menu size={24} color="#FFFFFF" />
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            {/* Your Location Sub-header Bar */}
+            <View style={styles.locationSubHeader}>
                 <TouchableOpacity 
-                    style={styles.locationContainer} 
+                    style={styles.locationSubContainer} 
                     onPress={() => setIsAddressModalOpen(true)}
+                    activeOpacity={0.7}
                 >
-                    <MapPin size={22} color="#FF4732" />
-                    <View style={styles.locationTextWrapper}>
-                        <Text style={styles.locationLabel}>
-                            Deliver to <ChevronDown size={12} color="#4B5563" />
-                            <Text style={styles.radiusPillText}> • Under 5km</Text>
-                        </Text>
-                        <Text style={styles.locationAddress} numberOfLines={1}>
-                            {isLoadingGps ? 'Detecting device location...' : (selectedLocation ? selectedLocation.addressLine : 'Select Address')}
-                        </Text>
+                    <View style={styles.homeIconContainer}>
+                        <Home size={18} color="#A81C1C" />
+                    </View>
+                    <View style={styles.locationTextColumn}>
+                        <Text style={styles.yourLocationLabel}>Your Location</Text>
+                        <View style={styles.locationNameRow}>
+                            <Text style={styles.locationNameText} numberOfLines={1}>
+                                {isLoadingGps 
+                                    ? 'Detecting location...' 
+                                    : (selectedLocation ? selectedLocation.label || 'Home' : 'Home')}
+                            </Text>
+                            <ChevronDown size={14} color="#4B5563" style={{ marginLeft: 4 }} />
+                        </View>
                     </View>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                    style={styles.headerCartButton}
-                    onPress={() => navigation.navigate('Cart')}
-                >
-                    <ShoppingBag size={22} color="#1F2937" />
-                    {cartItems.length > 0 && (
-                        <View style={styles.cartBadge}>
-                            <Text style={styles.cartBadgeText}>
-                                {cartItems.reduce((sum, i) => sum + i.quantity, 0)}
-                            </Text>
-                        </View>
-                    )}
-                </TouchableOpacity>
+                <View style={styles.under5kmTag}>
+                    <Text style={styles.under5kmText}>Under 5km</Text>
+                </View>
             </View>
 
             <ScrollView 
                 showsVerticalScrollIndicator={false}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                contentContainerStyle={styles.scrollContent}
             >
-                {/* Search & Filters */}
-                {/* Search Bar */}
-                <View style={styles.searchSection}>
+                {/* Banner Slideshow Carousel */}
+                <View style={styles.bannerContainer}>
+                    <ScrollView
+                        ref={bannerScrollRef}
+                        horizontal
+                        pagingEnabled
+                        showsHorizontalScrollIndicator={false}
+                        onMomentumScrollEnd={onBannerScroll}
+                        contentContainerStyle={styles.bannerScrollContent}
+                    >
+                        {BANNERS.map((banner) => (
+                            <View key={banner.id} style={[styles.bannerCard, { backgroundColor: banner.bgColor }]}>
+                                <View style={styles.bannerTextSection}>
+                                    <Text style={styles.bannerTitle}>
+                                        <Text style={styles.bannerTitleHighlight}>{banner.titleHighlight} </Text>
+                                        <Text style={styles.bannerTitleRest}>{banner.titleRest}</Text>
+                                    </Text>
+                                    <Text style={styles.bannerSubtitle}>{banner.subtitle}</Text>
+                                </View>
+                                <View style={styles.bannerImageSection}>
+                                    <Image source={banner.image} style={styles.bannerImage} resizeMode="contain" />
+                                </View>
+                            </View>
+                        ))}
+                    </ScrollView>
+
+                    {/* Banner Pagination Dots */}
+                    <View style={styles.paginationContainer}>
+                        {BANNERS.map((_, idx) => (
+                            <View 
+                                key={idx} 
+                                style={[
+                                    styles.paginationDot, 
+                                    idx === activeBannerIndex && styles.paginationDotActive
+                                ]} 
+                            />
+                        ))}
+                    </View>
+                </View>
+
+                {/* Search Bar + VEG Switch Row */}
+                <View style={styles.searchRow}>
                     <View style={styles.searchBar}>
-                        <Search size={20} color="#9CA3AF" />
+                        <Search size={18} color="#A81C1C" style={{ marginRight: 8 }} />
                         <TextInput 
                             style={styles.searchInput}
-                            placeholder="Search restaurants, cuisines..."
+                            placeholder="Search for food, restaurants..."
                             value={searchQuery}
                             onChangeText={setSearchQuery}
                             placeholderTextColor="#9CA3AF"
                         />
+                        <View style={styles.searchDivider} />
+                        <TouchableOpacity onPress={() => navigation.navigate('Search')}>
+                            <Mic size={18} color="#A81C1C" />
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* VEG Toggle Switch */}
+                    <View style={styles.vegContainer}>
+                        <Text style={styles.vegLabel}>VEG</Text>
+                        <TouchableOpacity 
+                            style={[styles.vegSwitchTrack, isVegOnly && styles.vegSwitchTrackActive]}
+                            onPress={() => setIsVegOnly(!isVegOnly)}
+                            activeOpacity={0.8}
+                        >
+                            <View style={[styles.vegSwitchThumb, isVegOnly && styles.vegSwitchThumbActive]} />
+                        </TouchableOpacity>
                     </View>
                 </View>
 
-                {/* Horizontal Filters Strip */}
+                {/* Filter Pills Strip */}
                 <ScrollView 
                     horizontal 
                     showsHorizontalScrollIndicator={false}
@@ -157,11 +311,11 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                         style={[styles.filterPill, sortBy !== 'Relevance' && styles.filterPillActive]}
                         onPress={() => setIsSortModalOpen(true)}
                     >
-                        <SlidersHorizontal size={12} color={sortBy !== 'Relevance' ? '#FF4732' : '#4B5563'} style={{ marginRight: 4 }} />
+                        <SlidersHorizontal size={12} color={sortBy !== 'Relevance' ? '#A81C1C' : '#4B5563'} style={{ marginRight: 4 }} />
                         <Text style={[styles.filterPillText, sortBy !== 'Relevance' && styles.filterPillTextActive]}>
                             Sort: {sortBy}
                         </Text>
-                        <ChevronDown size={12} color={sortBy !== 'Relevance' ? '#FF4732' : '#4B5563'} style={{ marginLeft: 2 }} />
+                        <ChevronDown size={12} color={sortBy !== 'Relevance' ? '#A81C1C' : '#4B5563'} style={{ marginLeft: 2 }} />
                     </TouchableOpacity>
 
                     <TouchableOpacity 
@@ -170,15 +324,6 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                     >
                         <Text style={[styles.filterPillText, minRating === 4 && styles.filterPillTextActive]}>
                             Rating 4.0+
-                        </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity 
-                        style={[styles.filterPill, isVegOnly && styles.filterPillActive]}
-                        onPress={() => setIsVegOnly(!isVegOnly)}
-                    >
-                        <Text style={[styles.filterPillText, isVegOnly && styles.filterPillTextActive]}>
-                            Pure Veg
                         </Text>
                     </TouchableOpacity>
 
@@ -210,46 +355,52 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                     </TouchableOpacity>
                 </ScrollView>
 
-                {/* Categories Slider */}
+                {/* Categories Cards Row */}
                 <View style={styles.categoriesSection}>
-                    <Text style={styles.sectionTitle}>What's on your mind?</Text>
                     <ScrollView 
                         horizontal 
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={styles.categoriesList}
                     >
-                        {CATEGORIES.map((cat) => (
-                            <TouchableOpacity 
-                                key={cat}
-                                style={[
-                                    styles.categoryBadge,
-                                    activeCategory === cat && styles.categoryBadgeActive
-                                ]}
-                                onPress={() => setActiveCategory(cat)}
-                            >
-                                <Text style={[
-                                    styles.categoryText,
-                                    activeCategory === cat && styles.categoryTextActive
-                                ]}>
-                                    {cat}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
+                        {CATEGORIES_DATA.map((cat) => {
+                            const isSelected = activeCategory === cat.name;
+                            return (
+                                <TouchableOpacity 
+                                    key={cat.id}
+                                    style={[
+                                        styles.categoryCard,
+                                        isSelected && styles.categoryCardActive
+                                    ]}
+                                    onPress={() => setActiveCategory(cat.name)}
+                                    activeOpacity={0.8}
+                                >
+                                    <View style={[styles.categoryIconCircle, isSelected && styles.categoryIconCircleActive]}>
+                                        <Text style={styles.categoryIconEmoji}>{cat.icon}</Text>
+                                    </View>
+                                    <Text style={[
+                                        styles.categoryText,
+                                        isSelected && styles.categoryTextActive
+                                    ]}>
+                                        {cat.name}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
                     </ScrollView>
                 </View>
 
-                {/* Restaurants List */}
+                {/* Popular Restaurants Section */}
                 <View style={styles.restaurantsSection}>
-                    <View style={styles.restaurantHeaderRow}>
-                        <Text style={styles.sectionTitle}>Restaurants (Under 5 km)</Text>
-                        <View style={styles.distanceBadgePill}>
-                            <Text style={styles.distanceBadgeText}>Max 5 km radius</Text>
-                        </View>
+                    <View style={styles.sectionHeaderRow}>
+                        <Text style={styles.sectionTitle}>Popular Restaurants</Text>
+                        <TouchableOpacity onPress={() => navigation.navigate('Search')}>
+                            <Text style={styles.viewAllText}>View All &gt;</Text>
+                        </TouchableOpacity>
                     </View>
                     
                     {isLoading || isLoadingGps ? (
                         <View style={styles.centerContainer}>
-                            <ActivityIndicator size="large" color="#FF4732" />
+                            <ActivityIndicator size="large" color="#A81C1C" />
                             <Text style={styles.infoMessage}>Finding restaurants near your location...</Text>
                         </View>
                     ) : filteredRestaurants.length === 0 ? (
@@ -298,13 +449,13 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                             }}
                         >
                             <View style={styles.currentGpsIconWrapper}>
-                                <Navigation size={20} color="#FF4732" />
+                                <Navigation size={20} color="#A81C1C" />
                             </View>
                             <View style={styles.currentGpsTextWrapper}>
                                 <Text style={styles.currentGpsTitle}>Use Current Device Location</Text>
                                 <Text style={styles.currentGpsSubtitle}>Detect GPS coordinates • Within 5 km radius</Text>
                             </View>
-                            {isLoadingGps && <ActivityIndicator size="small" color="#FF4732" />}
+                            {isLoadingGps && <ActivityIndicator size="small" color="#A81C1C" />}
                         </TouchableOpacity>
                         
                         <View style={styles.modalDivider} />
@@ -325,7 +476,7 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                                             setIsAddressModalOpen(false);
                                         }}
                                     >
-                                        <MapPin size={18} color={selectedLocation?.id === addr.id ? '#FF4732' : '#6B7280'} />
+                                        <MapPin size={18} color={selectedLocation?.id === addr.id ? '#A81C1C' : '#6B7280'} />
                                         <View style={styles.addressTextContainer}>
                                             <Text style={styles.addressLabelText}>{addr.label}</Text>
                                             <Text style={styles.addressDetailText} numberOfLines={1}>{addr.addressLine}</Text>
@@ -377,9 +528,103 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                                 <Text style={[styles.sortOptionText, sortBy === option && styles.sortOptionTextActive]}>
                                     {option}
                                 </Text>
-                                {sortBy === option && <Check size={18} color="#FF4732" />}
+                                {sortBy === option && <Check size={18} color="#A81C1C" />}
                             </TouchableOpacity>
                         ))}
+                    </View>
+                </TouchableOpacity>
+            </Modal>
+
+            {/* Side Drawer Menu Modal */}
+            <Modal
+                visible={isMenuDrawerOpen}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setIsMenuDrawerOpen(false)}
+            >
+                <TouchableOpacity 
+                    style={styles.drawerOverlay}
+                    activeOpacity={1}
+                    onPress={() => setIsMenuDrawerOpen(false)}
+                >
+                    <View style={styles.drawerContent}>
+                        <View style={styles.drawerHeader}>
+                            <Text style={styles.drawerBrandTitle}>HIVAGO</Text>
+                            <TouchableOpacity onPress={() => setIsMenuDrawerOpen(false)}>
+                                <X size={24} color="#1F2937" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.drawerList}>
+                            <TouchableOpacity 
+                                style={styles.drawerItem}
+                                onPress={() => {
+                                    setIsMenuDrawerOpen(false);
+                                    navigation.navigate('Profile');
+                                }}
+                            >
+                                <User size={20} color="#4B5563" />
+                                <Text style={styles.drawerItemText}>My Profile</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                                style={styles.drawerItem}
+                                onPress={() => {
+                                    setIsMenuDrawerOpen(false);
+                                    navigation.navigate('OrdersList');
+                                }}
+                            >
+                                <Package size={20} color="#4B5563" />
+                                <Text style={styles.drawerItemText}>My Orders</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                                style={styles.drawerItem}
+                                onPress={() => {
+                                    setIsMenuDrawerOpen(false);
+                                    navigation.navigate('Cart');
+                                }}
+                            >
+                                <ShoppingBag size={20} color="#4B5563" />
+                                <Text style={styles.drawerItemText}>Cart</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                                style={styles.drawerItem}
+                                onPress={() => {
+                                    setIsMenuDrawerOpen(false);
+                                    setIsAddressModalOpen(true);
+                                }}
+                            >
+                                <MapPin size={20} color="#4B5563" />
+                                <Text style={styles.drawerItemText}>Saved Addresses</Text>
+                            </TouchableOpacity>
+
+                            {isLoggedIn ? (
+                                <TouchableOpacity 
+                                    style={[styles.drawerItem, { marginTop: 20 }]}
+                                    onPress={() => {
+                                        setIsMenuDrawerOpen(false);
+                                        logout();
+                                        showToast("Logged out", "success");
+                                    }}
+                                >
+                                    <LogOut size={20} color="#EF4444" />
+                                    <Text style={[styles.drawerItemText, { color: '#EF4444', fontWeight: 'bold' }]}>Logout</Text>
+                                </TouchableOpacity>
+                            ) : (
+                                <TouchableOpacity 
+                                    style={[styles.drawerItem, { marginTop: 20 }]}
+                                    onPress={() => {
+                                        setIsMenuDrawerOpen(false);
+                                        navigation.navigate('SignIn');
+                                    }}
+                                >
+                                    <User size={20} color="#A81C1C" />
+                                    <Text style={[styles.drawerItemText, { color: '#A81C1C', fontWeight: 'bold' }]}>Log In / Sign Up</Text>
+                                </TouchableOpacity>
+                            )}
+                        </ScrollView>
                     </View>
                 </TouchableOpacity>
             </Modal>
@@ -390,129 +635,329 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#FFFFFF',
     },
-    header: {
+    brandHeader: {
+        backgroundColor: '#A81C1C',
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingTop: 50,
+        paddingTop: 46,
+        paddingBottom: 14,
         paddingHorizontal: 20,
-        paddingBottom: 12,
+    },
+    brandTitle: {
+        fontSize: 24,
+        fontWeight: '900',
+        color: '#FFFFFF',
+        letterSpacing: 1,
+        fontStyle: 'italic',
+    },
+    brandHeaderRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+    },
+    headerIconButton: {
+        position: 'relative',
+        padding: 4,
+    },
+    cartBadge: {
+        position: 'absolute',
+        top: -2,
+        right: -4,
         backgroundColor: '#FFFFFF',
+        borderRadius: 10,
+        width: 18,
+        height: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    cartBadgeText: {
+        color: '#A81C1C',
+        fontSize: 10,
+        fontWeight: 'bold',
+    },
+    locationSubHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 18,
+        paddingVertical: 10,
         borderBottomWidth: 1,
         borderBottomColor: '#F3F4F6',
     },
-    locationContainer: {
+    locationSubContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         flex: 1,
-        marginRight: 12,
     },
-    locationTextWrapper: {
-        marginLeft: 10,
+    homeIconContainer: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: '#FFF0EF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 10,
+    },
+    locationTextColumn: {
         flex: 1,
     },
-    locationLabel: {
-        fontSize: 12,
+    yourLocationLabel: {
+        fontSize: 11,
         color: '#6B7280',
-        fontWeight: '600',
+        fontWeight: '500',
+    },
+    locationNameRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        marginTop: 1,
     },
-    locationAddress: {
-        fontSize: 14,
+    locationNameText: {
+        fontSize: 15,
         fontWeight: 'bold',
         color: '#1F2937',
-        marginTop: 2,
     },
-    searchSection: {
+    under5kmTag: {
+        backgroundColor: '#FFF0EF',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#FFD4D0',
+    },
+    under5kmText: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#A81C1C',
+    },
+    scrollContent: {
+        paddingBottom: 40,
+    },
+    bannerContainer: {
+        marginVertical: 14,
+        paddingHorizontal: 16,
+    },
+    bannerScrollContent: {
+        gap: 16,
+    },
+    bannerCard: {
+        width: BANNER_WIDTH,
+        height: 160,
+        borderRadius: 20,
+        padding: 18,
         flexDirection: 'row',
-        paddingHorizontal: 20,
-        marginVertical: 16,
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#F3F4F6',
+    },
+    bannerTextSection: {
+        flex: 1,
+        paddingRight: 12,
+    },
+    bannerTitle: {
+        fontSize: 22,
+        fontWeight: '900',
+        lineHeight: 26,
+    },
+    bannerTitleHighlight: {
+        color: '#FF5722',
+    },
+    bannerTitleRest: {
+        color: '#1F2937',
+    },
+    bannerSubtitle: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 6,
+        lineHeight: 16,
+    },
+    bannerImageSection: {
+        width: 120,
+        height: 120,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    bannerImage: {
+        width: '100%',
+        height: '100%',
+    },
+    paginationContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 10,
+        gap: 6,
+    },
+    paginationDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#E5E7EB',
+    },
+    paginationDotActive: {
+        width: 22,
+        backgroundColor: '#A81C1C',
+    },
+    searchRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        marginBottom: 12,
         gap: 12,
     },
     searchBar: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        paddingHorizontal: 16,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 14,
+        paddingHorizontal: 14,
         height: 48,
         borderWidth: 1,
         borderColor: '#E5E7EB',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.02,
-        shadowRadius: 4,
-        elevation: 1,
     },
     searchInput: {
         flex: 1,
-        marginLeft: 8,
-        fontSize: 14,
+        fontSize: 13,
         color: '#1F2937',
     },
-    filterButton: {
-        justifyContent: 'center',
+    searchDivider: {
+        width: 1,
+        height: 20,
+        backgroundColor: '#E5E7EB',
+        marginHorizontal: 10,
+    },
+    vegContainer: {
         alignItems: 'center',
+        justifyContent: 'center',
+    },
+    vegLabel: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#374151',
+        marginBottom: 3,
+    },
+    vegSwitchTrack: {
+        width: 44,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#E5E7EB',
+        padding: 2,
+        justifyContent: 'center',
+    },
+    vegSwitchTrackActive: {
+        backgroundColor: '#10B981',
+    },
+    vegSwitchThumb: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
         backgroundColor: '#FFFFFF',
-        borderRadius: 16,
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    vegSwitchThumbActive: {
+        alignSelf: 'flex-end',
+    },
+    filterStrip: {
         paddingHorizontal: 16,
+        paddingBottom: 12,
+        gap: 8,
+    },
+    filterPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 7,
+        borderRadius: 50,
         borderWidth: 1,
         borderColor: '#E5E7EB',
-        height: 48,
+        backgroundColor: '#FFFFFF',
     },
-    filterButtonActive: {
+    filterPillActive: {
+        borderColor: '#A81C1C',
         backgroundColor: '#FFF0EF',
-        borderColor: '#FF4732',
     },
-    filterButtonText: {
-        fontSize: 13,
+    filterPillText: {
+        fontSize: 12,
         fontWeight: '600',
         color: '#4B5563',
     },
-    filterButtonTextActive: {
-        color: '#FF4732',
+    filterPillTextActive: {
+        color: '#A81C1C',
     },
     categoriesSection: {
-        marginBottom: 20,
+        marginBottom: 18,
+    },
+    categoriesList: {
+        paddingHorizontal: 16,
+        gap: 12,
+    },
+    categoryCard: {
+        width: 78,
+        height: 86,
+        borderRadius: 20,
+        backgroundColor: '#F9FAFB',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 6,
+    },
+    categoryCardActive: {
+        borderColor: '#A81C1C',
+        backgroundColor: '#FFF0EF',
+        borderWidth: 1.5,
+    },
+    categoryIconCircle: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    categoryIconCircleActive: {
+        backgroundColor: 'transparent',
+    },
+    categoryIconEmoji: {
+        fontSize: 24,
+    },
+    categoryText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#4B5563',
+        textAlign: 'center',
+    },
+    categoryTextActive: {
+        color: '#A81C1C',
+        fontWeight: 'bold',
+    },
+    restaurantsSection: {
+        paddingHorizontal: 16,
+    },
+    sectionHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 14,
     },
     sectionTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#1F2937',
-        paddingHorizontal: 20,
-        marginBottom: 12,
+        color: '#111827',
     },
-    categoriesList: {
-        paddingHorizontal: 20,
-        gap: 10,
-    },
-    categoryBadge: {
-        paddingHorizontal: 18,
-        paddingVertical: 10,
-        borderRadius: 14,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    categoryBadgeActive: {
-        backgroundColor: '#FF4732',
-        borderColor: '#FF4732',
-    },
-    categoryText: {
+    viewAllText: {
         fontSize: 13,
-        fontWeight: '600',
-        color: '#4B5563',
-    },
-    categoryTextActive: {
-        color: '#FFFFFF',
-    },
-    restaurantsSection: {
-        paddingHorizontal: 20,
-        paddingBottom: 40,
+        fontWeight: 'bold',
+        color: '#A81C1C',
     },
     card: {
         backgroundColor: '#FFFFFF',
@@ -522,15 +967,16 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#F3F4F6',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.04,
-        shadowRadius: 10,
+        shadowRadius: 8,
         elevation: 2,
     },
     imageContainer: {
         height: 160,
         width: '100%',
         position: 'relative',
+        backgroundColor: '#A81C1C',
     },
     cardImage: {
         width: '100%',
@@ -541,23 +987,41 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 12,
         left: 12,
-        backgroundColor: '#FF4732',
+        backgroundColor: '#A81C1C',
         paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
     },
     discountText: {
         color: '#FFFFFF',
         fontSize: 11,
         fontWeight: 'bold',
     },
+    pickupBadge: {
+        position: 'absolute',
+        top: 12,
+        left: 12,
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    pickupBadgeText: {
+        color: '#A81C1C',
+        fontSize: 10,
+        fontWeight: '900',
+    },
     favoriteBtn: {
         position: 'absolute',
         top: 12,
         right: 12,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        backgroundColor: '#FFFFFF',
         padding: 8,
         borderRadius: 50,
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
     cardInfo: {
         padding: 16,
@@ -570,18 +1034,18 @@ const styles = StyleSheet.create({
     restaurantName: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#1F2937',
+        color: '#111827',
         flex: 1,
-        marginRight: 10,
+        marginRight: 8,
     },
     ratingBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FF4732',
+        backgroundColor: '#10B981',
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 8,
-        gap: 4,
+        gap: 3,
     },
     ratingText: {
         color: '#FFFFFF',
@@ -622,6 +1086,22 @@ const styles = StyleSheet.create({
     infoMessage: {
         fontSize: 14,
         color: '#6B7280',
+        textAlign: 'center',
+    },
+    useGpsBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#A81C1C',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 20,
+        marginTop: 14,
+        gap: 8,
+    },
+    useGpsBtnText: {
+        color: 'white',
+        fontSize: 13,
+        fontWeight: 'bold',
     },
     modalOverlay: {
         flex: 1,
@@ -633,13 +1113,50 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         padding: 24,
-        maxHeight: '60%',
+        maxHeight: '65%',
     },
     modalTitle: {
         fontSize: 18,
         fontWeight: 'bold',
         color: '#1F2937',
         marginBottom: 16,
+    },
+    currentGpsOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF0EF',
+        padding: 14,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#FFD4D0',
+        marginBottom: 12,
+    },
+    currentGpsIconWrapper: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    currentGpsTextWrapper: {
+        flex: 1,
+    },
+    currentGpsTitle: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#1F2937',
+    },
+    currentGpsSubtitle: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 2,
+    },
+    modalDivider: {
+        height: 1,
+        backgroundColor: '#E5E7EB',
+        marginVertical: 10,
     },
     noAddressText: {
         fontSize: 14,
@@ -686,35 +1203,6 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#4B5563',
     },
-    filterStrip: {
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        gap: 8,
-        backgroundColor: '#FFFFFF',
-    },
-    filterPill: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 50,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        backgroundColor: '#FFFFFF',
-        marginRight: 8,
-    },
-    filterPillActive: {
-        borderColor: '#FF4732',
-        backgroundColor: '#FFF0EF',
-    },
-    filterPillText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#4B5563',
-    },
-    filterPillTextActive: {
-        color: '#FF4732',
-    },
     modalHeaderRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -724,7 +1212,7 @@ const styles = StyleSheet.create({
     modalCloseText: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#FF4732',
+        color: '#A81C1C',
     },
     sortOptionRow: {
         flexDirection: 'row',
@@ -739,104 +1227,51 @@ const styles = StyleSheet.create({
         color: '#4B5563',
     },
     sortOptionTextActive: {
-        color: '#FF4732',
+        color: '#A81C1C',
         fontWeight: 'bold',
     },
-    headerCartButton: {
-        position: 'relative',
-        padding: 8,
+    drawerOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-start',
     },
-    cartBadge: {
-        position: 'absolute',
-        top: 2,
-        right: 2,
-        backgroundColor: '#FF4732',
-        borderRadius: 9,
-        width: 18,
-        height: 18,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1.5,
-        borderColor: '#FFFFFF',
+    drawerContent: {
+        width: '80%',
+        height: '100%',
+        backgroundColor: '#FFFFFF',
+        padding: 24,
+        paddingTop: 50,
+        alignSelf: 'flex-start',
     },
-    cartBadgeText: {
-        color: '#FFFFFF',
-        fontSize: 9,
-        fontWeight: 'bold',
-    },
-    radiusPillText: {
-        fontSize: 11,
-        color: '#FF4732',
-        fontWeight: 'bold',
-    },
-    restaurantHeaderRow: {
+    drawerHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: 24,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+        paddingBottom: 16,
     },
-    distanceBadgePill: {
-        backgroundColor: '#FFF0EF',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-        marginRight: 20,
+    drawerBrandTitle: {
+        fontSize: 24,
+        fontWeight: '900',
+        color: '#A81C1C',
+        fontStyle: 'italic',
     },
-    distanceBadgeText: {
-        fontSize: 11,
-        fontWeight: 'bold',
-        color: '#FF4732',
-    },
-    useGpsBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FF4732',
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 20,
-        marginTop: 14,
-        gap: 8,
-    },
-    useGpsBtnText: {
-        color: 'white',
-        fontSize: 13,
-        fontWeight: 'bold',
-    },
-    currentGpsOption: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFF0EF',
-        padding: 14,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: '#FFD4D0',
-        marginBottom: 12,
-    },
-    currentGpsIconWrapper: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: '#FFFFFF',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
-    },
-    currentGpsTextWrapper: {
+    drawerList: {
         flex: 1,
     },
-    currentGpsTitle: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#1F2937',
+    drawerItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F9FAFB',
+        gap: 14,
     },
-    currentGpsSubtitle: {
-        fontSize: 12,
-        color: '#6B7280',
-        marginTop: 2,
-    },
-    modalDivider: {
-        height: 1,
-        backgroundColor: '#E5E7EB',
-        marginVertical: 10,
+    drawerItemText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#374151',
     },
 });
