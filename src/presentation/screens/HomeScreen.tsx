@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, Image, TouchableOpacity, ScrollView, RefreshControl, Modal, ActivityIndicator, Dimensions } from 'react-native';
 import { useFilters, Restaurant } from '../context/FilterContext';
 import { useUserLocation, Address } from '../context/LocationContext';
@@ -68,7 +68,6 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
     const { toggleFavorite, isFavorite } = useFavorites();
     const { showToast } = useToast();
     const { cartItems, cartTotal, isLoggedIn, logout } = useCart();
-    const isCartNotEmpty = cartItems.length > 0;
 
     const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
     const [isSortModalOpen, setIsSortModalOpen] = useState(false);
@@ -112,15 +111,37 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
         navigation.navigate('RestaurantMenu', { restaurantId: restaurant.id, restaurantName: restaurant.name });
     };
 
-    const renderRestaurantCard = ({ item }: { item: Restaurant }) => {
+    // 1. Popular Restaurants (sorted by rating descending)
+    const popularRestaurants = useMemo(() => {
+        return [...filteredRestaurants].sort((a, b) => b.rating - a.rating);
+    }, [filteredRestaurants]);
+
+    // 2. Nearby Restaurants (sorted by distance ascending)
+    const nearbyRestaurants = useMemo(() => {
+        return [...filteredRestaurants].sort((a, b) => {
+            const distA = parseFloat(a.distance) || 99;
+            const distB = parseFloat(b.distance) || 99;
+            return distA - distB;
+        });
+    }, [filteredRestaurants]);
+
+    // 3. Recommended Restaurants (promoted, high ratings, or custom fallback order)
+    const recommendedRestaurants = useMemo(() => {
+        const discounted = filteredRestaurants.filter(r => r.discount || r.promoted);
+        const nonDiscounted = filteredRestaurants.filter(r => !r.discount && !r.promoted);
+        return [...discounted, ...nonDiscounted];
+    }, [filteredRestaurants]);
+
+    // Card Renderer for Horizontally Scrollable Restaurant Lists
+    const renderHorizontalRestaurantCard = ({ item }: { item: Restaurant }) => {
         const isFav = isFavorite(item.id);
         return (
             <TouchableOpacity 
-                style={styles.card} 
+                style={styles.horizontalCard} 
                 onPress={() => handleRestaurantPress(item)}
                 activeOpacity={0.9}
             >
-                <View style={styles.imageContainer}>
+                <View style={styles.horizontalImageContainer}>
                     <Image source={{ uri: item.imageUrl }} style={styles.cardImage} />
                     {item.discount && (
                         <View style={styles.discountBadge}>
@@ -136,15 +157,15 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                         style={styles.favoriteBtn} 
                         onPress={() => toggleFavorite(item)}
                     >
-                        <Heart size={18} color={isFav ? '#A81C1C' : '#6B7280'} fill={isFav ? '#A81C1C' : 'transparent'} />
+                        <Heart size={16} color={isFav ? '#A81C1C' : '#6B7280'} fill={isFav ? '#A81C1C' : 'transparent'} />
                     </TouchableOpacity>
                 </View>
 
-                <View style={styles.cardInfo}>
+                <View style={styles.horizontalCardInfo}>
                     <View style={styles.cardHeader}>
                         <Text style={styles.restaurantName} numberOfLines={1}>{item.name}</Text>
                         <View style={styles.ratingBadge}>
-                            <Star size={12} color="#FFFFFF" fill="#FFFFFF" />
+                            <Star size={11} color="#FFFFFF" fill="#FFFFFF" />
                             <Text style={styles.ratingText}>{item.rating}</Text>
                         </View>
                     </View>
@@ -159,9 +180,9 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                             <Text style={styles.footerText}>{item.deliveryTime}</Text>
                         </View>
                         <Text style={styles.dot}>•</Text>
-                        <Text style={styles.footerText}>{item.costForTwo}</Text>
-                        <Text style={styles.dot}>•</Text>
                         <Text style={styles.footerText}>{item.distance}</Text>
+                        <Text style={styles.dot}>•</Text>
+                        <Text style={styles.footerText}>{item.costForTwo}</Text>
                     </View>
                 </View>
             </TouchableOpacity>
@@ -389,40 +410,80 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                     </ScrollView>
                 </View>
 
-                {/* Popular Restaurants Section */}
-                <View style={styles.restaurantsSection}>
-                    <View style={styles.sectionHeaderRow}>
-                        <Text style={styles.sectionTitle}>Popular Restaurants</Text>
-                        <TouchableOpacity onPress={() => navigation.navigate('Search')}>
-                            <Text style={styles.viewAllText}>View All &gt;</Text>
+                {/* Loading / Empty States */}
+                {isLoading || isLoadingGps ? (
+                    <View style={styles.centerContainer}>
+                        <ActivityIndicator size="large" color="#A81C1C" />
+                        <Text style={styles.infoMessage}>Finding restaurants near your location...</Text>
+                    </View>
+                ) : filteredRestaurants.length === 0 ? (
+                    <View style={styles.centerContainer}>
+                        <Text style={styles.infoMessage}>No restaurants found within 5 km of your location.</Text>
+                        <TouchableOpacity 
+                            style={styles.useGpsBtn} 
+                            onPress={useDeviceLocation}
+                        >
+                            <Navigation size={16} color="white" />
+                            <Text style={styles.useGpsBtnText}>Use Device GPS Location</Text>
                         </TouchableOpacity>
                     </View>
-                    
-                    {isLoading || isLoadingGps ? (
-                        <View style={styles.centerContainer}>
-                            <ActivityIndicator size="large" color="#A81C1C" />
-                            <Text style={styles.infoMessage}>Finding restaurants near your location...</Text>
+                ) : (
+                    <>
+                        {/* Section 1: Popular Restaurants */}
+                        <View style={styles.sectionContainer}>
+                            <View style={styles.sectionHeaderRow}>
+                                <Text style={styles.sectionTitle}>🔥 Popular Restaurants</Text>
+                                <TouchableOpacity onPress={() => navigation.navigate('Search')}>
+                                    <Text style={styles.viewAllText}>View All &gt;</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <FlatList 
+                                data={popularRestaurants}
+                                renderItem={renderHorizontalRestaurantCard}
+                                keyExtractor={(item) => `pop-${item.id}`}
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.horizontalListContent}
+                            />
                         </View>
-                    ) : filteredRestaurants.length === 0 ? (
-                        <View style={styles.centerContainer}>
-                            <Text style={styles.infoMessage}>No restaurants found within 5 km of your location.</Text>
-                            <TouchableOpacity 
-                                style={styles.useGpsBtn} 
-                                onPress={useDeviceLocation}
-                            >
-                                <Navigation size={16} color="white" />
-                                <Text style={styles.useGpsBtnText}>Use Device GPS Location</Text>
-                            </TouchableOpacity>
+
+                        {/* Section 2: Nearby Restaurants */}
+                        <View style={styles.sectionContainer}>
+                            <View style={styles.sectionHeaderRow}>
+                                <Text style={styles.sectionTitle}>📍 Nearby Restaurants</Text>
+                                <TouchableOpacity onPress={() => navigation.navigate('Search')}>
+                                    <Text style={styles.viewAllText}>View All &gt;</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <FlatList 
+                                data={nearbyRestaurants}
+                                renderItem={renderHorizontalRestaurantCard}
+                                keyExtractor={(item) => `near-${item.id}`}
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.horizontalListContent}
+                            />
                         </View>
-                    ) : (
-                        <FlatList 
-                            data={filteredRestaurants}
-                            renderItem={renderRestaurantCard}
-                            keyExtractor={(item) => item.id}
-                            scrollEnabled={false}
-                        />
-                    )}
-                </View>
+
+                        {/* Section 3: Recommended for You */}
+                        <View style={styles.sectionContainer}>
+                            <View style={styles.sectionHeaderRow}>
+                                <Text style={styles.sectionTitle}>⭐ Recommended for You</Text>
+                                <TouchableOpacity onPress={() => navigation.navigate('Search')}>
+                                    <Text style={styles.viewAllText}>View All &gt;</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <FlatList 
+                                data={recommendedRestaurants}
+                                renderItem={renderHorizontalRestaurantCard}
+                                keyExtractor={(item) => `rec-${item.id}`}
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.horizontalListContent}
+                            />
+                        </View>
+                    </>
+                )}
             </ScrollView>
 
             {/* Address Selection Modal */}
@@ -894,7 +955,7 @@ const styles = StyleSheet.create({
         color: '#A81C1C',
     },
     categoriesSection: {
-        marginBottom: 18,
+        marginBottom: 20,
     },
     categoriesList: {
         paddingHorizontal: 16,
@@ -940,14 +1001,15 @@ const styles = StyleSheet.create({
         color: '#A81C1C',
         fontWeight: 'bold',
     },
-    restaurantsSection: {
-        paddingHorizontal: 16,
+    sectionContainer: {
+        marginBottom: 24,
     },
     sectionHeaderRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 14,
+        paddingHorizontal: 16,
+        marginBottom: 12,
     },
     sectionTitle: {
         fontSize: 18,
@@ -959,24 +1021,31 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#A81C1C',
     },
-    card: {
+    horizontalListContent: {
+        paddingHorizontal: 16,
+        gap: 14,
+    },
+    horizontalCard: {
+        width: 250,
         backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        marginBottom: 18,
+        borderRadius: 18,
         overflow: 'hidden',
         borderWidth: 1,
         borderColor: '#F3F4F6',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 8,
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
         elevation: 2,
     },
-    imageContainer: {
-        height: 160,
+    horizontalImageContainer: {
+        height: 135,
         width: '100%',
         position: 'relative',
         backgroundColor: '#A81C1C',
+    },
+    horizontalCardInfo: {
+        padding: 14,
     },
     cardImage: {
         width: '100%',
@@ -985,46 +1054,43 @@ const styles = StyleSheet.create({
     },
     discountBadge: {
         position: 'absolute',
-        bottom: 12,
-        left: 12,
+        bottom: 10,
+        left: 10,
         backgroundColor: '#A81C1C',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
         borderRadius: 6,
     },
     discountText: {
         color: '#FFFFFF',
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: 'bold',
     },
     pickupBadge: {
         position: 'absolute',
-        top: 12,
-        left: 12,
+        top: 10,
+        left: 10,
         backgroundColor: '#FFFFFF',
         paddingHorizontal: 8,
-        paddingVertical: 4,
+        paddingVertical: 3,
         borderRadius: 6,
     },
     pickupBadgeText: {
         color: '#A81C1C',
-        fontSize: 10,
+        fontSize: 9,
         fontWeight: '900',
     },
     favoriteBtn: {
         position: 'absolute',
-        top: 12,
-        right: 12,
+        top: 10,
+        right: 10,
         backgroundColor: '#FFFFFF',
-        padding: 8,
+        padding: 7,
         borderRadius: 50,
         shadowColor: '#000',
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 2,
-    },
-    cardInfo: {
-        padding: 16,
     },
     cardHeader: {
         flexDirection: 'row',
@@ -1032,20 +1098,20 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     restaurantName: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: 'bold',
         color: '#111827',
         flex: 1,
-        marginRight: 8,
+        marginRight: 6,
     },
     ratingBadge: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#10B981',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
-        gap: 3,
+        paddingHorizontal: 6,
+        paddingVertical: 3,
+        borderRadius: 6,
+        gap: 2,
     },
     ratingText: {
         color: '#FFFFFF',
@@ -1053,30 +1119,30 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     cuisinesText: {
-        fontSize: 13,
+        fontSize: 12,
         color: '#6B7280',
         marginTop: 4,
     },
     cardFooter: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 12,
-        paddingTop: 12,
+        marginTop: 10,
+        paddingTop: 10,
         borderTopWidth: 1,
         borderTopColor: '#F3F4F6',
     },
     footerItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        gap: 3,
     },
     footerText: {
-        fontSize: 12,
+        fontSize: 11,
         color: '#6B7280',
         fontWeight: '500',
     },
     dot: {
-        marginHorizontal: 6,
+        marginHorizontal: 4,
         color: '#D1D5DB',
     },
     centerContainer: {
@@ -1216,7 +1282,7 @@ const styles = StyleSheet.create({
     },
     sortOptionRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justify.content: 'space-between',
         alignItems: 'center',
         paddingVertical: 14,
         borderBottomWidth: 1,
