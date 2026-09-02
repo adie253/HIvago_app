@@ -5,7 +5,7 @@ import { useUserLocation, Address } from '../context/LocationContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { useToast } from '../context/ToastContext';
 import { useCart } from '../context/CartContext';
-import { MapPin, Search, Star, Clock, Heart, SlidersHorizontal, ChevronDown, Check, ShoppingBag, Navigation, Home, Menu, Mic, X, User, Package, LogOut } from 'lucide-react-native';
+import { MapPin, Search, Star, Clock, Heart, SlidersHorizontal, ChevronDown, Check, ShoppingBag, Navigation, Home, Menu, Mic, X, User, Package, LogOut, Smartphone, Truck } from 'lucide-react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_WIDTH = SCREEN_WIDTH - 32;
@@ -492,8 +492,67 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                                 horizontal
                                 showsHorizontalScrollIndicator={false}
                                 contentContainerStyle={styles.horizontalListContent}
-                            />
                         </View>
+
+                        {/* Delivery Feature & Info Section */}
+                        <View style={styles.deliveryFeatureSection}>
+                            {/* Circular Delivery Hero Illustration */}
+                            <View style={styles.heroImageWrapper}>
+                                <Image 
+                                    source={require('../../assets/delivery_hero.png')} 
+                                    style={styles.deliveryHeroImg}
+                                    resizeMode="contain"
+                                />
+                            </View>
+
+                            {/* Section Headline */}
+                            <View style={styles.featureHeadlineWrapper}>
+                                <Text style={styles.featureTitleDark}>Your order is delivered</Text>
+                                <Text style={styles.featureTitleAccent}>quickly</Text>
+                                <Text style={styles.featureSubtitle}>
+                                    Enjoy your food in a warm state will increase appetite
+                                </Text>
+                            </View>
+
+                            {/* 3 Feature Cards List */}
+                            <View style={styles.featureCardsContainer}>
+                                {/* Card 1 */}
+                                <View style={styles.featureCard}>
+                                    <View style={styles.featureIconBox}>
+                                        <Smartphone size={24} color="#FF5722" />
+                                    </View>
+                                    <View style={styles.featureCardTextCol}>
+                                        <Text style={styles.featureCardTitle}>Order from anywhere</Text>
+                                        <Text style={styles.featureCardDesc}>Order food anywhere easily via smartphone</Text>
+                                    </View>
+                                </View>
+
+                                {/* Card 2 */}
+                                <View style={styles.featureCard}>
+                                    <View style={styles.featureIconBox}>
+                                        <Truck size={24} color="#FF5722" />
+                                    </View>
+                                    <View style={styles.featureCardTextCol}>
+                                        <Text style={styles.featureCardTitle}>Fast delivery</Text>
+                                        <Text style={styles.featureCardDesc}>Delivered by professional courier and on time place</Text>
+                                    </View>
+                                </View>
+
+                                {/* Card 3 */}
+                                <View style={styles.featureCard}>
+                                    <View style={styles.featureIconBox}>
+                                        <Clock size={24} color="#FF5722" />
+                                    </View>
+                                    <View style={styles.featureCardTextCol}>
+                                        <Text style={styles.featureCardTitle}>Receive on time</Text>
+                                        <Text style={styles.featureCardDesc}>Receive your food while it is still warm</Text>
+                                    </View>
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* Bottom Red Footer Strip */}
+                        <View style={styles.bottomBrandFooter} />
                     </>
                 )}
             </ScrollView>
@@ -1351,5 +1410,96 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '600',
         color: '#374151',
+    },
+    deliveryFeatureSection: {
+        marginTop: 20,
+        paddingHorizontal: 20,
+        alignItems: 'center',
+    },
+    heroImageWrapper: {
+        width: 270,
+        height: 270,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginVertical: 10,
+    },
+    deliveryHeroImg: {
+        width: '100%',
+        height: '100%',
+    },
+    featureHeadlineWrapper: {
+        alignItems: 'flex-start',
+        width: '100%',
+        marginVertical: 14,
+        paddingHorizontal: 4,
+    },
+    featureTitleDark: {
+        fontSize: 28,
+        fontWeight: '400',
+        color: '#0F172A',
+        lineHeight: 34,
+        letterSpacing: -0.5,
+    },
+    featureTitleAccent: {
+        fontSize: 32,
+        fontWeight: 'bold',
+        color: '#FF5722',
+        lineHeight: 38,
+        marginTop: 2,
+    },
+    featureSubtitle: {
+        fontSize: 14,
+        color: '#64748B',
+        marginTop: 10,
+        lineHeight: 20,
+        maxWidth: '90%',
+    },
+    featureCardsContainer: {
+        width: '100%',
+        marginTop: 14,
+        gap: 16,
+    },
+    featureCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.04,
+        shadowRadius: 10,
+        elevation: 2,
+    },
+    featureIconBox: {
+        width: 60,
+        height: 60,
+        borderRadius: 16,
+        backgroundColor: '#FFF0ED',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
+    },
+    featureCardTextCol: {
+        flex: 1,
+    },
+    featureCardTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#0F172A',
+        marginBottom: 4,
+    },
+    featureCardDesc: {
+        fontSize: 12,
+        color: '#64748B',
+        lineHeight: 17,
+    },
+    bottomBrandFooter: {
+        height: 50,
+        backgroundColor: '#A81C1C',
+        marginTop: 36,
+        width: '100%',
     },
 });
