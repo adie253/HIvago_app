@@ -67,7 +67,19 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
     const { selectedLocation, addresses, selectLocation, isLoadingGps, useDeviceLocation } = useUserLocation();
     const { toggleFavorite, isFavorite } = useFavorites();
     const { showToast } = useToast();
-    const { cartItems, cartTotal, isLoggedIn, logout } = useCart();
+    const { cartItems, cartTotal, isLoggedIn, refreshLoginStatus } = useCart();
+
+    const handleLogout = () => {
+        if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem('customer_token');
+            localStorage.removeItem('customer_refresh_token');
+            localStorage.removeItem('customer_token_expires_at');
+            localStorage.removeItem('customer_phone');
+            localStorage.removeItem('customer_id');
+            localStorage.removeItem('customer_name');
+        }
+        refreshLoginStatus();
+    };
 
     const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
     const [isSortModalOpen, setIsSortModalOpen] = useState(false);
@@ -666,7 +678,7 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                                     style={[styles.drawerItem, { marginTop: 20 }]}
                                     onPress={() => {
                                         setIsMenuDrawerOpen(false);
-                                        logout();
+                                        handleLogout();
                                         showToast("Logged out", "success");
                                     }}
                                 >
