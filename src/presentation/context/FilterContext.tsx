@@ -190,7 +190,7 @@ export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                         ? item.logoUrl
                         : getFallbackImage(item.name, item.cuisineTypes[0] || 'General', 'restaurant'),
                     promoted: false,
-                    discount: dist != null && dist < 3 ? "FREE Delivery" : undefined,
+                    discount: undefined,
                     isVeg: item.isPureVeg,
                     categories: item.cuisineTypes.length > 0 ? item.cuisineTypes : ["Multi-cuisine"],
                     acceptsPickup: item.acceptsPickup,

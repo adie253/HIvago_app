@@ -444,7 +444,7 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                         {/* Section 1: Popular Restaurants */}
                         <View style={styles.sectionContainer}>
                             <View style={styles.sectionHeaderRow}>
-                                <Text style={styles.sectionTitle}>🔥 Popular Restaurants</Text>
+                                <Text style={styles.sectionTitle}>Popular Restaurants</Text>
                                 <TouchableOpacity onPress={() => navigation.navigate('Search')}>
                                     <Text style={styles.viewAllText}>View All &gt;</Text>
                                 </TouchableOpacity>
@@ -462,7 +462,7 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                         {/* Section 2: Nearby Restaurants */}
                         <View style={styles.sectionContainer}>
                             <View style={styles.sectionHeaderRow}>
-                                <Text style={styles.sectionTitle}>📍 Nearby Restaurants</Text>
+                                <Text style={styles.sectionTitle}>Nearby Restaurants</Text>
                                 <TouchableOpacity onPress={() => navigation.navigate('Search')}>
                                     <Text style={styles.viewAllText}>View All &gt;</Text>
                                 </TouchableOpacity>
@@ -480,7 +480,7 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                         {/* Section 3: Recommended for You */}
                         <View style={styles.sectionContainer}>
                             <View style={styles.sectionHeaderRow}>
-                                <Text style={styles.sectionTitle}>⭐ Recommended for You</Text>
+                                <Text style={styles.sectionTitle}>Recommended for You</Text>
                                 <TouchableOpacity onPress={() => navigation.navigate('Search')}>
                                     <Text style={styles.viewAllText}>View All &gt;</Text>
                                 </TouchableOpacity>

@@ -54,7 +54,7 @@ export const mockRestaurants: any[] = [
         costForTwo: "₹800",
         imageUrl: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&q=80&w=400",
         promoted: true,
-        discount: "Free Delivery"
+        discount: "15% OFF"
     },
     {
         id: "r6",
