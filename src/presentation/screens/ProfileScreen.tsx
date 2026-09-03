@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { useUserLocation } from '../context/LocationContext';
 import { useCart } from '../context/CartContext';
@@ -184,6 +184,16 @@ export const ProfileScreen = ({ navigation }: { navigation: any }) => {
         );
     }
 
+    const sortedAddresses = useMemo(() => {
+        return [...addresses].sort((a, b) => {
+            const isADefault = selectedLocation?.id === a.id;
+            const isBDefault = selectedLocation?.id === b.id;
+            if (isADefault && !isBDefault) return -1;
+            if (!isADefault && isBDefault) return 1;
+            return 0;
+        });
+    }, [addresses, selectedLocation]);
+
     return (
         <View style={styles.container}>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -197,6 +207,17 @@ export const ProfileScreen = ({ navigation }: { navigation: any }) => {
                     <Text style={styles.userPhone}>{profile?.phone ? ` ${profile.phone}` : ''}</Text>
                     <Text style={styles.userEmail}>{profile?.email || ''}</Text>
                     
+                    {/* Default Address Banner in Profile Header */}
+                    {selectedLocation && (
+                        <View style={styles.headerDefaultAddressBanner}>
+                            <MapPin size={14} color="#A81C1C" style={{ marginRight: 6 }} />
+                            <Text style={styles.headerDefaultAddressText} numberOfLines={1}>
+                                <Text style={{ fontWeight: 'bold', color: '#A81C1C' }}>Default: </Text>
+                                {selectedLocation.label ? `${selectedLocation.label} - ` : ''}{selectedLocation.addressLine}
+                            </Text>
+                        </View>
+                    )}
+
                     <TouchableOpacity style={styles.editProfileBtn} onPress={() => setIsEditProfileOpen(true)}>
                         <Text style={styles.editProfileBtnText}>Edit Profile</Text>
                     </TouchableOpacity>
@@ -233,10 +254,10 @@ export const ProfileScreen = ({ navigation }: { navigation: any }) => {
                         </TouchableOpacity>
                     </View>
 
-                    {addresses.length === 0 ? (
+                    {sortedAddresses.length === 0 ? (
                         <Text style={styles.noAddressText}>No addresses saved yet.</Text>
                     ) : (
-                        addresses.map((addr) => {
+                        sortedAddresses.map((addr) => {
                             const isDefault = selectedLocation?.id === addr.id;
                             const isHome = addr.label.toLowerCase() === 'home';
                             const labelColor = isHome ? '#F59E0B' : '#10B981';
@@ -506,7 +527,24 @@ const styles = StyleSheet.create({
     userEmail: {
         fontSize: 13,
         color: '#6B7280',
+        marginBottom: 12,
+    },
+    headerDefaultAddressBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF0EF',
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#FFD4D0',
         marginBottom: 16,
+        maxWidth: '100%',
+    },
+    headerDefaultAddressText: {
+        fontSize: 12,
+        color: '#374151',
+        flex: 1,
     },
     editProfileBtn: {
         backgroundColor: '#FEF2F2',
