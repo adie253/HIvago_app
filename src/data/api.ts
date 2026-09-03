@@ -177,7 +177,10 @@ export const deleteAddress = async (id: string): Promise<boolean> => {
 export const getCustomerProfile = async (): Promise<any> => {
     try {
         const response = await authFetch('/customers/profile');
-        if (!response.ok) throw new Error(`Failed to fetch profile: ${response.statusText}`);
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.message || `Failed to fetch profile: ${response.statusText}`);
+        }
         return await response.json();
     } catch (error) {
         console.error('Error fetching profile:', error);
@@ -190,10 +193,14 @@ export const updateCustomerProfile = async (profileData: { name: string; email: 
         const response = await authFetch('/customers/profile', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(profileData)
+            body: JSON.stringify({
+                name: profileData.name,
+                email: profileData.email
+            })
         });
         if (!response.ok) {
-            throw new Error(`Failed to update profile: ${response.statusText}`);
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.message || `Failed to update profile: ${response.statusText}`);
         }
         return await response.json();
     } catch (error) {
