@@ -95,7 +95,7 @@ export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const [maxPrepTime, setMaxPrepTime] = useState<number | null>(null);
     const [priceRange, setPriceRange] = useState<[number, number] | null>(null);
     const [fulfillmentType, setFulfillmentType] = useState<'Delivery' | 'Pickup' | 'Both'>('Both');
-    const [sortBy, setSortBy] = useState('Relevance');
+    const [sortBy, setSortBy] = useState('Distance: Low to High');
     const [isNewlyAdded, setIsNewlyAdded] = useState(false);
     const [minRating, setMinRating] = useState(0);
     const [isPopular, setIsPopular] = useState(false);
@@ -155,7 +155,7 @@ export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const filteredRestaurants: Restaurant[] = useMemo(() => {
         if (!data?.items) return [];
-        return data.items
+        let itemsList = data.items
             .filter((item: RestaurantListItem) => {
                 if (!item.isAcceptingOrders) return false;
                 
@@ -185,6 +185,7 @@ export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     rating: 4.2,
                     deliveryTime: `${item.avgPrepTimeMins}-${item.avgPrepTimeMins + 10} min`,
                     distance: dist != null ? formatDistance(dist) : "-- km",
+                    rawDistance: dist ?? 999,
                     costForTwo: `₹${item.minOrderAmount > 0 ? item.minOrderAmount * 2 : 150}`,
                     imageUrl: (item.logoUrl && item.logoUrl !== 'null' && item.logoUrl !== 'undefined' && !item.logoUrl.includes('example.com'))
                         ? item.logoUrl
@@ -198,10 +199,20 @@ export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     menu: [],
                     addressLine: item.addressLine,
                     latitude: item.latitude,
-                    longitude: item.longitude
+                    longitude: item.longitude,
+                    phone: (item as any).phone
                 };
             });
-    }, [data, selectedLocation]);
+
+        // Apply client-side sorting if needed
+        if (sortBy === 'Distance: Low to High') {
+            itemsList.sort((a, b) => (a.rawDistance || 999) - (b.rawDistance || 999));
+        } else if (sortBy === 'Rating: High to Low') {
+            itemsList.sort((a, b) => b.rating - a.rating);
+        }
+
+        return itemsList;
+    }, [data, selectedLocation, sortBy]);
 
     const totalCount = data?.totalCount || 0;
     const isLocationRequired = !selectedLocation?.latitude || !selectedLocation?.longitude;

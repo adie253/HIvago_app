@@ -151,7 +151,7 @@ export const SignInScreen = ({ navigation }: { navigation: any }) => {
                             <Lock size={20} color="#9CA3AF" style={styles.inputIcon} />
                             <TextInput 
                                 style={styles.input}
-                                placeholder="4-Digit OTP"
+                                placeholder="6-Digit OTP"
                                 keyboardType="number-pad"
                                 value={otp}
                                 onChangeText={setOtp}

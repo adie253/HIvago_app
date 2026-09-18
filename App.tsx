@@ -1,3 +1,4 @@
+import './src/global.css';
 import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -17,17 +18,23 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Screens
 import { SignInScreen } from './src/presentation/screens/SignInScreen';
+import { RegisterScreen } from './src/presentation/screens/RegisterScreen';
 import { HomeScreen } from './src/presentation/screens/HomeScreen';
 import { SearchScreen } from './src/presentation/screens/SearchScreen';
+import { RestaurantsScreen } from './src/presentation/screens/RestaurantsScreen';
 import { RestaurantMenuScreen } from './src/presentation/screens/RestaurantMenuScreen';
 import { CartScreen } from './src/presentation/screens/CartScreen';
 import { PaymentWebViewScreen } from './src/presentation/screens/PaymentWebViewScreen';
+import { PaymentSuccessScreen } from './src/presentation/screens/PaymentSuccessScreen';
+import { PaymentFailedScreen } from './src/presentation/screens/PaymentFailedScreen';
 import { OrderTrackingScreen } from './src/presentation/screens/OrderTrackingScreen';
 import { OrdersListScreen } from './src/presentation/screens/OrdersListScreen';
 import { ProfileScreen } from './src/presentation/screens/ProfileScreen';
+import { AboutScreen } from './src/presentation/screens/AboutScreen';
+import { PrivacyScreen } from './src/presentation/screens/PrivacyScreen';
 
 // Icons
-import { Home, Search, ShoppingBag, User as UserIcon } from 'lucide-react-native';
+import { Home, Search, ShoppingBag, User as UserIcon, Utensils } from 'lucide-react-native';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -59,6 +66,14 @@ const MainTabNavigator = () => {
         options={{
           tabBarLabel: 'Home',
           tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
+        }}
+      />
+      <Tab.Screen 
+        name="Restaurants" 
+        component={RestaurantsScreen} 
+        options={{
+          tabBarLabel: 'Explore',
+          tabBarIcon: ({ color, size }) => <Utensils size={size} color={color} />,
         }}
       />
       <Tab.Screen 
@@ -129,10 +144,16 @@ export default function App() {
                         <Stack.Navigator initialRouteName="MainTabs" screenOptions={{ headerShown: false }}>
                           <Stack.Screen name="MainTabs" component={MainTabNavigator} />
                           <Stack.Screen name="SignIn" component={SignInScreen} />
+                          <Stack.Screen name="Register" component={RegisterScreen} />
+                          <Stack.Screen name="RestaurantsList" component={RestaurantsScreen} />
                           <Stack.Screen name="RestaurantMenu" component={RestaurantMenuScreen} />
                           <Stack.Screen name="Cart" component={CartScreen} />
                           <Stack.Screen name="PaymentWebView" component={PaymentWebViewScreen} />
+                          <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
+                          <Stack.Screen name="PaymentFailed" component={PaymentFailedScreen} />
                           <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
+                          <Stack.Screen name="About" component={AboutScreen} />
+                          <Stack.Screen name="Privacy" component={PrivacyScreen} />
                         </Stack.Navigator>
                       </NavigationContainer>
                     </NotificationProvider>

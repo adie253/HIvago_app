@@ -238,6 +238,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (syncDebounceRef.current) clearTimeout(syncDebounceRef.current);
         syncDebounceRef.current = setTimeout(async () => {
             try {
+                if (!cartData.items || cartData.items.length === 0) {
+                    await clearServerCart();
+                    return;
+                }
+
                 const itemsPayload = cartData.items.map(i => {
                     const payload: any = {
                         menuItemId: i.menuItemId || i.id,
@@ -252,7 +257,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     return payload;
                 });
 
-                await clearServerCart();
                 await syncCart({
                     restaurantId: cartData.restaurantId,
                     restaurantName: cartData.restaurantName || 'Restaurant',
@@ -336,12 +340,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     specialInstructions: i.customizations
                 }));
 
-                await clearServerCart();
-                await syncCart({
-                    restaurantId: rId,
-                    restaurantName: rName,
-                    items: itemsPayload
-                }, true);
+                if (!itemsPayload || itemsPayload.length === 0) {
+                    await clearServerCart();
+                } else {
+                    await syncCart({
+                        restaurantId: rId,
+                        restaurantName: rName,
+                        items: itemsPayload
+                    }, true);
+                }
             } catch (err) {
                 console.error("Reorder sync failed:", err);
                 showToast("Failed to reorder items", "error");

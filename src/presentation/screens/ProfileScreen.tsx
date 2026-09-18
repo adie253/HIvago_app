@@ -160,6 +160,16 @@ export const ProfileScreen = ({ navigation }: { navigation: any }) => {
         navigation.navigate('SignIn');
     };
 
+    const sortedAddresses = useMemo(() => {
+        return [...addresses].sort((a, b) => {
+            const isADefault = selectedLocation?.id === a.id;
+            const isBDefault = selectedLocation?.id === b.id;
+            if (isADefault && !isBDefault) return -1;
+            if (!isADefault && isBDefault) return 1;
+            return 0;
+        });
+    }, [addresses, selectedLocation]);
+
     if (!isLoggedIn) {
         return (
             <View style={styles.centerContainer}>
@@ -183,16 +193,6 @@ export const ProfileScreen = ({ navigation }: { navigation: any }) => {
             </View>
         );
     }
-
-    const sortedAddresses = useMemo(() => {
-        return [...addresses].sort((a, b) => {
-            const isADefault = selectedLocation?.id === a.id;
-            const isBDefault = selectedLocation?.id === b.id;
-            if (isADefault && !isBDefault) return -1;
-            if (!isADefault && isBDefault) return 1;
-            return 0;
-        });
-    }, [addresses, selectedLocation]);
 
     return (
         <View style={styles.container}>
@@ -302,18 +302,18 @@ export const ProfileScreen = ({ navigation }: { navigation: any }) => {
                         </View>
                     </View>
                     <View style={styles.settingsCard}>
-                        <TouchableOpacity style={styles.settingsRow}>
+                        <TouchableOpacity style={styles.settingsRow} onPress={() => navigation.navigate('About')}>
                             <View style={styles.settingsRowLeft}>
-                                <Bell size={18} color="#6B7280" />
-                                <Text style={styles.settingsRowText}>Notifications</Text>
+                                <HelpCircle size={18} color="#6B7280" />
+                                <Text style={styles.settingsRowText}>About Hivago</Text>
                             </View>
                             <ChevronRight size={18} color="#9CA3AF" />
                         </TouchableOpacity>
                         <View style={styles.divider} />
-                        <TouchableOpacity style={styles.settingsRow}>
+                        <TouchableOpacity style={styles.settingsRow} onPress={() => navigation.navigate('Privacy')}>
                             <View style={styles.settingsRowLeft}>
-                                <HelpCircle size={18} color="#6B7280" />
-                                <Text style={styles.settingsRowText}>Help & Support</Text>
+                                <Bell size={18} color="#6B7280" />
+                                <Text style={styles.settingsRowText}>Privacy Policy</Text>
                             </View>
                             <ChevronRight size={18} color="#9CA3AF" />
                         </TouchableOpacity>
