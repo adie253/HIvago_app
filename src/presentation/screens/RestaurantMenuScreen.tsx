@@ -1,17 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, Modal, FlatList, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, Modal, FlatList, Dimensions, TextInput } from 'react-native';
 import { fetchRestaurantById, fetchItemDetails, ApiItem, ApiOptionGroupOption } from '../../data/api';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
-import { ArrowLeft, Star, Clock, ShoppingBag } from 'lucide-react-native';
+import { useFavorites } from '../context/FavoritesContext';
+import { ArrowLeft, Heart, Star, Clock, MapPin, Search, Mic, ShoppingBag, Bike, User } from 'lucide-react-native';
+import { getFallbackImage } from '../../utils/imageUtils';
 
 export const RestaurantMenuScreen = ({ route, navigation }: { route: any, navigation: any }) => {
     const { restaurantId, restaurantName } = route.params;
     const { addToCart, cartItems, cartTotal } = useCart();
     const { showToast } = useToast();
+    const { toggleFavorite, isFavorite } = useFavorites();
 
     const [restaurant, setRestaurant] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [fulfillmentMode, setFulfillmentMode] = useState<'Delivery' | 'Pickup'>('Delivery');
+    const [menuSearchQuery, setMenuSearchQuery] = useState('');
+    const [selectedCategoryTab, setSelectedCategoryTab] = useState<string>('All');
 
     // Customization State
     const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
@@ -19,6 +25,8 @@ export const RestaurantMenuScreen = ({ route, navigation }: { route: any, naviga
     const [selectedAddons, setSelectedAddons] = useState<any[]>([]);
     const [loadingDetails, setLoadingDetails] = useState(false);
     const [isVegOnly, setIsVegOnly] = useState(false);
+
+    const isFav = isFavorite(restaurantId);
 
     useEffect(() => {
         const load = async () => {
@@ -44,7 +52,6 @@ export const RestaurantMenuScreen = ({ route, navigation }: { route: any, naviga
                 setSelectedAddons([]);
                 setIsCustomModalOpen(true);
             } else {
-                // Add item straight to cart
                 addToCart({
                     id: item.id,
                     menuItemId: item.id,
@@ -57,7 +64,6 @@ export const RestaurantMenuScreen = ({ route, navigation }: { route: any, naviga
                 }, restaurantId, restaurantName);
             }
         } catch (e) {
-            // Fallback: Add directly if details fetch fails
             addToCart({
                 id: item.id,
                 menuItemId: item.id,
@@ -134,112 +140,214 @@ export const RestaurantMenuScreen = ({ route, navigation }: { route: any, naviga
         );
     }
 
-    // Group items by category
+    // Filter menu items by search query, category, and veg only
+    const allMenuItems = restaurant.menu || [];
+    const filteredItems = allMenuItems.filter((item: any) => {
+        if (isVegOnly && item.type !== 'Veg') return false;
+        if (menuSearchQuery.trim()) {
+            const matchesName = item.name.toLowerCase().includes(menuSearchQuery.toLowerCase());
+            const matchesCat = (item.category || '').toLowerCase().includes(menuSearchQuery.toLowerCase());
+            if (!matchesName && !matchesCat) return false;
+        }
+        if (selectedCategoryTab !== 'All') {
+            const cat = item.category || 'General';
+            if (cat.toLowerCase() !== selectedCategoryTab.toLowerCase()) return false;
+        }
+        return true;
+    });
+
+    // Group items by category for rendering
     const categories: Record<string, any[]> = {};
-    restaurant.menu.forEach((item: any) => {
-        if (isVegOnly && item.type !== 'Veg') return;
+    filteredItems.forEach((item: any) => {
         const cat = item.category || 'General';
         if (!categories[cat]) categories[cat] = [];
         categories[cat].push(item);
     });
 
+    const categoryNames: string[] = ['All', ...(Array.from(new Set(allMenuItems.map((i: any) => String(i.category || 'General')))) as string[])];
     const isCartNotEmpty = cartItems.length > 0;
+    const ratingCountFormatted = Math.round((restaurant.rating || 4.4) * 1400).toLocaleString();
 
     return (
         <View style={styles.container}>
-            {/* Header banner */}
-            <View style={styles.header}>
-                <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
-                    <ArrowLeft size={22} color="#1F2937" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle} numberOfLines={1}>{restaurant.name}</Text>
-            </View>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: isCartNotEmpty ? 100 : 40 }}>
+                
+                {/* Hero Banner Section */}
+                <View style={styles.heroBannerContainer}>
+                    <Image source={{ uri: restaurant.imageUrl }} style={styles.bannerImage} resizeMode="cover" />
+                    
+                    {/* Floating Back Button */}
+                    <TouchableOpacity style={styles.floatingBackBtn} onPress={() => navigation.goBack()} activeOpacity={0.85}>
+                        <ArrowLeft size={20} color="#1F2937" />
+                    </TouchableOpacity>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: isCartNotEmpty ? 90 : 30 }}>
-                {/* Image Banner */}
-                <Image source={{ uri: restaurant.imageUrl }} style={styles.bannerImage} />
+                    {/* Floating Heart Favorite Button */}
+                    <TouchableOpacity 
+                        style={styles.floatingFavBtn} 
+                        onPress={() => toggleFavorite(restaurant)} 
+                        activeOpacity={0.85}
+                    >
+                        <Heart size={20} color={isFav ? '#A81C1C' : '#6B7280'} fill={isFav ? '#A81C1C' : 'transparent'} />
+                    </TouchableOpacity>
+                </View>
 
-                {/* Details Section */}
-                <View style={styles.detailsCard}>
-                    <Text style={styles.restaurantNameText}>{restaurant.name}</Text>
-                    <Text style={styles.cuisinesText}>{restaurant.cuisines.join(', ')}</Text>
-                    <Text style={styles.addressText}>{restaurant.addressLine}</Text>
-
-                    <View style={styles.metaRow}>
-                        <View style={styles.metaBadge}>
-                            <Star size={16} color="#FFFFFF" fill="#FFFFFF" />
-                            <Text style={styles.metaBadgeText}>{restaurant.rating}</Text>
+                {/* Overlapping Floating Restaurant Info Card */}
+                <View style={styles.restaurantInfoCard}>
+                    <Text style={styles.restaurantTitle}>{restaurant.name}</Text>
+                    
+                    {/* Dietary Badges Row */}
+                    <View style={styles.dietaryRow}>
+                        <View style={styles.pureVegBadge}>
+                            <View style={styles.greenDot} />
+                            <Text style={styles.pureVegText}>100% PURE VEG</Text>
                         </View>
-                        <View style={[styles.metaBadge, { backgroundColor: '#F3F4F6' }]}>
-                            <Clock size={14} color="#6B7280" />
-                            <Text style={[styles.metaBadgeText, { color: '#4B5563' }]}>{restaurant.deliveryTime}</Text>
+
+                        <View style={styles.jainOptionsBadge}>
+                            <Text style={styles.jainIcon}>🌾</Text>
+                            <Text style={styles.jainText}>JAIN OPTIONS</Text>
                         </View>
-                        <Text style={styles.costText}>{restaurant.costForTwo}</Text>
+                    </View>
+
+                    {/* Location Row */}
+                    <View style={styles.locationRow}>
+                        <MapPin size={14} color="#EF4444" />
+                        <Text style={styles.locationText}>{restaurant.addressLine || 'gadital, hadapsar'}</Text>
+                    </View>
+
+                    {/* Metrics Row (Delivery Time, Distance, Rating) */}
+                    <View style={styles.metricsRow}>
+                        <Clock size={14} color="#FF4732" />
+                        <Text style={styles.metricText}>{restaurant.deliveryTime}</Text>
+                        <Text style={styles.metricDot}>•</Text>
+                        <Text style={styles.metricText}>{restaurant.distance}</Text>
+                        <Text style={styles.metricDot}>•</Text>
+                        
+                        <View style={styles.ratingBadgePill}>
+                            <Star size={12} color="#D97706" fill="#D97706" />
+                            <Text style={styles.ratingText}>{restaurant.rating} ({ratingCountFormatted})</Text>
+                        </View>
                     </View>
                 </View>
 
-                {/* Veg Only Toggle row */}
-                <View style={styles.menuHeaderRow}>
-                    <Text style={styles.menuSectionTitle}>Menu</Text>
-                    <View style={styles.vegToggleContainer}>
-                        <Text style={styles.vegToggleLabel}>Veg Only</Text>
-                        <TouchableOpacity 
-                            style={[styles.vegSwitch, isVegOnly ? styles.vegSwitchActive : styles.vegSwitchInactive]}
-                            onPress={() => setIsVegOnly(!isVegOnly)}
-                            activeOpacity={0.8}
-                        >
-                            <View style={[styles.vegSwitchDot, isVegOnly ? styles.vegSwitchDotActive : styles.vegSwitchDotInactive]} />
-                        </TouchableOpacity>
-                    </View>
+                {/* Fulfillment Mode Switcher (Delivery vs Pickup) */}
+                <View style={styles.fulfillmentCard}>
+                    <TouchableOpacity 
+                        style={[styles.fulfillmentTab, fulfillmentMode === 'Delivery' && styles.fulfillmentTabActive]}
+                        onPress={() => setFulfillmentMode('Delivery')}
+                        activeOpacity={0.9}
+                    >
+                        <View style={[styles.fulfillmentIconCircle, fulfillmentMode === 'Delivery' && styles.fulfillmentIconCircleActive]}>
+                            <Bike size={22} color={fulfillmentMode === 'Delivery' ? '#FF4732' : '#9CA3AF'} />
+                        </View>
+                        {fulfillmentMode === 'Delivery' && (
+                            <View style={styles.fulfillmentTextCol}>
+                                <Text style={styles.fulfillmentTitleActive}>Delivery</Text>
+                                <Text style={styles.fulfillmentSubActive}>{restaurant.deliveryTime}</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                        style={[styles.fulfillmentTab, fulfillmentMode === 'Pickup' && styles.fulfillmentTabActive]}
+                        onPress={() => setFulfillmentMode('Pickup')}
+                        activeOpacity={0.9}
+                    >
+                        <View style={[styles.fulfillmentIconCircle, fulfillmentMode === 'Pickup' && styles.fulfillmentIconCircleActive]}>
+                            <User size={20} color={fulfillmentMode === 'Pickup' ? '#FF4732' : '#9CA3AF'} />
+                        </View>
+                        {fulfillmentMode === 'Pickup' && (
+                            <View style={styles.fulfillmentTextCol}>
+                                <Text style={styles.fulfillmentTitleActive}>Pickup</Text>
+                                <Text style={styles.fulfillmentSubActive}>Self service</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
                 </View>
 
-                {/* Menu Listings */}
-                <View style={styles.menuSection}>
-                    {Object.keys(categories).map((catName) => {
-                        if (categories[catName].length === 0) return null;
+                {/* Search for Dishes Input Bar */}
+                <View style={styles.menuSearchContainer}>
+                    <Search size={18} color="#FF4732" style={{ marginRight: 10 }} />
+                    <TextInput 
+                        style={styles.menuSearchInput}
+                        placeholder="Search for dishes"
+                        placeholderTextColor="#9CA3AF"
+                        value={menuSearchQuery}
+                        onChangeText={setMenuSearchQuery}
+                    />
+                    <Mic size={18} color="#FF4732" />
+                </View>
+
+                {/* Horizontal Category Navigation Tabs */}
+                <ScrollView 
+                    horizontal 
+                    showsHorizontalScrollIndicator={false} 
+                    contentContainerStyle={styles.categoryTabsScroll}
+                >
+                    {categoryNames.map((catName) => {
+                        const isSelected = selectedCategoryTab === catName;
                         return (
-                            <View key={catName} style={styles.categoryContainer}>
-                                <Text style={styles.categoryNameTitle}>{catName}</Text>
-                                {categories[catName].map((item) => (
-                                    <View key={item.id} style={styles.menuItemRow}>
-                                        <View style={styles.menuItemInfo}>
-                                            <View style={styles.typeBadgeContainer}>
-                                                <View style={[styles.dotIndicator, { backgroundColor: item.type === 'Veg' ? '#10B981' : '#EF4444' }]} />
-                                                <Text style={styles.typeText}>{item.type}</Text>
-                                                {item.price > 180 ? (
-                                                    <View style={[styles.dishBadge, styles.bestsellerBadge]}>
-                                                        <Text style={styles.bestsellerBadgeText}>★ BESTSELLER</Text>
-                                                    </View>
-                                                ) : item.price > 120 ? (
-                                                    <View style={[styles.dishBadge, styles.mustTryBadge]}>
-                                                        <Text style={styles.mustTryBadgeText}>MUST TRY</Text>
-                                                    </View>
-                                                ) : null}
-                                            </View>
-                                            <Text style={styles.menuItemName}>{item.name}</Text>
-                                            <Text style={styles.menuItemPrice}>₹{item.price}</Text>
-                                            <Text style={styles.menuItemDesc} numberOfLines={2}>{item.description}</Text>
-                                        </View>
-                                    
-                                    <View style={styles.menuItemAction}>
-                                        <Image source={{ uri: item.imageUrl }} style={styles.menuItemImage} />
-                                        <TouchableOpacity 
-                                            style={styles.addBtn}
-                                            onPress={() => handleAddItemPress(item)}
-                                            disabled={loadingDetails}
-                                        >
-                                            <Text style={styles.addBtnText}>ADD</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            ))}
+                            <TouchableOpacity
+                                key={catName}
+                                style={[styles.catTabItem, isSelected && styles.catTabItemActive]}
+                                onPress={() => setSelectedCategoryTab(catName)}
+                            >
+                                <Text style={[styles.catTabText, isSelected && styles.catTabTextActive]}>
+                                    {catName}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </ScrollView>
+
+                {/* Menu Item Listings */}
+                <View style={styles.menuSection}>
+                    {Object.keys(categories).length === 0 ? (
+                        <View style={styles.emptyMenuContainer}>
+                            <Text style={styles.emptyMenuText}>No dishes match your search criteria.</Text>
                         </View>
-                    );
-                })}
+                    ) : (
+                        Object.keys(categories).map((catName) => (
+                            <View key={catName} style={styles.categorySectionGroup}>
+                                <Text style={styles.categorySectionHeader}>{catName.toUpperCase()}</Text>
+                                
+                                <View style={styles.dishesGrid}>
+                                    {categories[catName].map((item) => (
+                                        <View key={item.id} style={styles.dishGridCard}>
+                                            <View style={styles.dishImageWrapper}>
+                                                <Image source={{ uri: item.imageUrl || getFallbackImage(item.name, item.category) }} style={styles.dishCardImage} />
+                                                
+                                                {/* Veg Indicator Badge */}
+                                                <View style={styles.vegIndicatorBadge}>
+                                                    <View style={[styles.vegDotInside, { backgroundColor: item.type === 'Veg' ? '#10B981' : '#EF4444' }]} />
+                                                </View>
+                                            </View>
+
+                                            <View style={styles.dishCardBody}>
+                                                <Text style={styles.dishCardName} numberOfLines={1}>{item.name}</Text>
+                                                
+                                                <View style={styles.dishCardFooterRow}>
+                                                    <Text style={styles.dishCardPrice}>₹{item.price}</Text>
+
+                                                    <TouchableOpacity 
+                                                        style={styles.dishAddBtn}
+                                                        onPress={() => handleAddItemPress(item)}
+                                                        disabled={loadingDetails}
+                                                        activeOpacity={0.8}
+                                                    >
+                                                        <Text style={styles.dishAddBtnText}>ADD</Text>
+                                                    </TouchableOpacity>
+                                                </View>
+                                            </View>
+                                        </View>
+                                    ))}
+                                </View>
+                            </View>
+                        ))
+                    )}
                 </View>
             </ScrollView>
 
-            {/* Floating Cart Footer */}
+            {/* Floating Cart Footer Bar */}
             {isCartNotEmpty && (
                 <TouchableOpacity 
                     style={styles.cartFooter}
@@ -258,7 +366,7 @@ export const RestaurantMenuScreen = ({ route, navigation }: { route: any, naviga
                 </TouchableOpacity>
             )}
 
-            {/* Customizations Modal */}
+            {/* Addons Customizations Modal */}
             <Modal visible={isCustomModalOpen} transparent animationType="slide">
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
@@ -310,12 +418,10 @@ export const RestaurantMenuScreen = ({ route, navigation }: { route: any, naviga
     );
 };
 
-const { width } = Dimensions.get('window');
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#F8FAFC',
     },
     centerContainer: {
         flex: 1,
@@ -323,177 +429,350 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
     },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingTop: 50,
-        paddingHorizontal: 20,
-        paddingBottom: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
-    },
-    iconButton: {
-        padding: 6,
-    },
-    headerTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#1F2937',
-        marginLeft: 12,
-        flex: 1,
+    heroBannerContainer: {
+        width: '100%',
+        height: 220,
+        position: 'relative',
+        backgroundColor: '#A81C1C',
     },
     bannerImage: {
         width: '100%',
-        height: 180,
-        resizeMode: 'cover',
+        height: '100%',
     },
-    detailsCard: {
+    floatingBackBtn: {
+        position: 'absolute',
+        top: 48,
+        left: 16,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 4,
+    },
+    floatingFavBtn: {
+        position: 'absolute',
+        top: 48,
+        right: 16,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 4,
+    },
+    restaurantInfoCard: {
         backgroundColor: '#FFFFFF',
         borderRadius: 24,
-        marginHorizontal: 20,
-        marginTop: -30,
+        marginHorizontal: 16,
+        marginTop: -55,
         padding: 20,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
+        shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.08,
-        shadowRadius: 15,
+        shadowRadius: 16,
         elevation: 6,
         borderWidth: 1,
         borderColor: '#F3F4F6',
     },
-    restaurantNameText: {
+    restaurantTitle: {
         fontSize: 22,
-        fontWeight: 'bold',
-        color: '#1F2937',
+        fontWeight: '900',
+        color: '#111827',
+        letterSpacing: -0.3,
     },
-    cuisinesText: {
-        fontSize: 14,
-        color: '#6B7280',
-        marginTop: 4,
-    },
-    addressText: {
-        fontSize: 12,
-        color: '#9CA3AF',
-        marginTop: 2,
-    },
-    metaRow: {
+    dietaryRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 14,
-        gap: 12,
+        gap: 10,
+        marginTop: 10,
     },
-    metaBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FF4732',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
-        gap: 4,
-    },
-    metaBadgeText: {
-        color: '#FFFFFF',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    costText: {
-        fontSize: 13,
-        color: '#4B5563',
-        fontWeight: '600',
-    },
-    menuSection: {
-        marginTop: 24,
-        paddingHorizontal: 20,
-    },
-    categoryContainer: {
-        marginBottom: 28,
-    },
-    categoryNameTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#1F2937',
-        marginBottom: 16,
-        borderBottomWidth: 2,
-        borderBottomColor: '#F3F4F6',
-        paddingBottom: 6,
-    },
-    menuItemRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
-    },
-    menuItemInfo: {
-        flex: 1,
-        marginRight: 16,
-    },
-    typeBadgeContainer: {
+    pureVegBadge: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        marginBottom: 6,
+        backgroundColor: '#E6F4EA',
+        paddingHorizontal: 12,
+        paddingVertical: 5,
+        borderRadius: 16,
     },
-    dotIndicator: {
+    greenDot: {
         width: 8,
         height: 8,
         borderRadius: 4,
+        backgroundColor: '#059669',
     },
-    typeText: {
+    pureVegText: {
         fontSize: 11,
-        fontWeight: 'bold',
-        color: '#6B7280',
+        fontWeight: '800',
+        color: '#059669',
     },
-    menuItemName: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#1F2937',
-    },
-    menuItemPrice: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#374151',
-        marginTop: 4,
-    },
-    menuItemDesc: {
-        fontSize: 12,
-        color: '#9CA3AF',
-        marginTop: 6,
-        lineHeight: 16,
-    },
-    menuItemAction: {
-        width: 100,
-        height: 100,
-        position: 'relative',
+    jainOptionsBadge: {
+        flexDirection: 'row',
         alignItems: 'center',
-    },
-    menuItemImage: {
-        width: 100,
-        height: 100,
+        gap: 4,
+        backgroundColor: '#FEF3C7',
+        paddingHorizontal: 12,
+        paddingVertical: 5,
         borderRadius: 16,
-        backgroundColor: '#F3F4F6',
     },
-    addBtn: {
-        position: 'absolute',
-        bottom: -10,
+    jainIcon: {
+        fontSize: 12,
+    },
+    jainText: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: '#D97706',
+    },
+    locationRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 12,
+    },
+    locationText: {
+        fontSize: 13,
+        color: '#6B7280',
+        fontWeight: '500',
+    },
+    metricsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: 14,
+    },
+    metricText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#374151',
+    },
+    metricDot: {
+        fontSize: 12,
+        color: '#D1D5DB',
+    },
+    ratingBadgePill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: '#FEF3C7',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    ratingText: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#D97706',
+    },
+    fulfillmentCard: {
+        marginHorizontal: 16,
+        marginTop: 16,
         backgroundColor: '#FFFFFF',
-        width: 80,
-        height: 32,
-        borderRadius: 10,
+        borderRadius: 40,
+        padding: 6,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+    },
+    fulfillmentTab: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 30,
+        gap: 10,
+    },
+    fulfillmentTabActive: {
+        backgroundColor: '#FFFFFF',
+    },
+    fulfillmentIconCircle: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#F9FAFB',
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 1,
+    },
+    fulfillmentIconCircleActive: {
+        backgroundColor: '#FFF0EF',
+        borderWidth: 1.5,
         borderColor: '#FF4732',
-        shadowColor: '#FF4732',
+    },
+    fulfillmentTextCol: {
+        marginRight: 10,
+    },
+    fulfillmentTitleActive: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#A81C1C',
+    },
+    fulfillmentSubActive: {
+        fontSize: 11,
+        color: '#6B7280',
+    },
+    menuSearchContainer: {
+        marginHorizontal: 16,
+        marginTop: 16,
+        marginBottom: 16,
+        height: 48,
+        borderRadius: 24,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    menuSearchInput: {
+        flex: 1,
+        fontSize: 14,
+        color: '#1F2937',
+    },
+    categoryTabsScroll: {
+        paddingHorizontal: 16,
+        gap: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+        paddingBottom: 8,
+        marginBottom: 16,
+    },
+    catTabItem: {
+        paddingBottom: 6,
+    },
+    catTabItemActive: {
+        borderBottomWidth: 3,
+        borderBottomColor: '#FF4732',
+    },
+    catTabText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    catTabTextActive: {
+        color: '#FF4732',
+        fontWeight: '800',
+    },
+    menuSection: {
+        paddingHorizontal: 16,
+    },
+    categorySectionGroup: {
+        marginBottom: 24,
+    },
+    categorySectionHeader: {
+        fontSize: 14,
+        fontWeight: '900',
+        color: '#1F2937',
+        letterSpacing: 0.5,
+        marginBottom: 14,
+    },
+    dishesGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 14,
+    },
+    dishGridCard: {
+        width: (Dimensions.get('window').width - 46) / 2,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
         elevation: 2,
     },
-    addBtnText: {
-        fontSize: 12,
-        fontWeight: 'bold',
+    dishImageWrapper: {
+        width: '100%',
+        height: 125,
+        position: 'relative',
+        backgroundColor: '#F3F4F6',
+    },
+    dishCardImage: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
+    },
+    vegIndicatorBadge: {
+        position: 'absolute',
+        top: 8,
+        left: 8,
+        width: 14,
+        height: 14,
+        borderRadius: 2,
+        borderWidth: 1,
+        borderColor: '#10B981',
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    vegDotInside: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+    },
+    dishCardBody: {
+        padding: 12,
+    },
+    dishCardName: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#111827',
+    },
+    dishCardFooterRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 10,
+    },
+    dishCardPrice: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: '#1F2937',
+    },
+    dishAddBtn: {
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#FF4732',
+        borderRadius: 8,
+        paddingHorizontal: 14,
+        paddingVertical: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 2,
+        elevation: 1,
+    },
+    dishAddBtnText: {
+        fontSize: 11,
+        fontWeight: '900',
         color: '#FF4732',
+    },
+    emptyMenuContainer: {
+        paddingVertical: 40,
+        alignItems: 'center',
+    },
+    emptyMenuText: {
+        fontSize: 14,
+        color: '#6B7280',
     },
     cartFooter: {
         position: 'absolute',
@@ -637,86 +916,5 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#EF4444',
         marginBottom: 10,
-    },
-    menuHeaderRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: 24,
-        paddingBottom: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
-    },
-    menuSectionTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#1F2937',
-    },
-    vegToggleContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    vegToggleLabel: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#4B5563',
-    },
-    vegSwitch: {
-        width: 44,
-        height: 24,
-        borderRadius: 12,
-        padding: 2,
-        justifyContent: 'center',
-    },
-    vegSwitchActive: {
-        backgroundColor: '#10B981',
-    },
-    vegSwitchInactive: {
-        backgroundColor: '#E5E7EB',
-    },
-    vegSwitchDot: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        backgroundColor: '#FFFFFF',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.2,
-        shadowRadius: 2,
-        elevation: 2,
-    },
-    vegSwitchDotActive: {
-        alignSelf: 'flex-end',
-    },
-    vegSwitchDotInactive: {
-        alignSelf: 'flex-start',
-    },
-    dishBadge: {
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 4,
-        marginLeft: 6,
-    },
-    bestsellerBadge: {
-        backgroundColor: '#FFFBEB',
-        borderWidth: 0.5,
-        borderColor: '#F59E0B',
-    },
-    bestsellerBadgeText: {
-        color: '#D97706',
-        fontSize: 9,
-        fontWeight: 'bold',
-    },
-    mustTryBadge: {
-        backgroundColor: '#FFF0EF',
-        borderWidth: 0.5,
-        borderColor: '#FF4732',
-    },
-    mustTryBadgeText: {
-        color: '#FF4732',
-        fontSize: 9,
-        fontWeight: 'bold',
     },
 });

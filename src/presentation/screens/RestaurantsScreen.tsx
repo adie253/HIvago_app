@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, TextInput, S
 import { useFilters, Restaurant } from '../context/FilterContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { ArrowLeft, Search, Star, Clock, Heart, SlidersHorizontal } from 'lucide-react-native';
+import { RestaurantCard } from '../components/RestaurantCard';
 
 export const RestaurantsScreen = ({ navigation }: { navigation: any }) => {
     const { 
@@ -12,57 +13,14 @@ export const RestaurantsScreen = ({ navigation }: { navigation: any }) => {
         filteredRestaurants, isLoading
     } = useFilters();
 
-    const { toggleFavorite, isFavorite } = useFavorites();
-
     const CATEGORIES = ['All', 'Burgers', 'Pizza', 'Sushi', 'Tacos', 'North Indian', 'Chinese', 'Desserts'];
 
     const renderRestaurantCard = ({ item }: { item: Restaurant }) => {
-        const isFav = isFavorite(item.id);
-
         return (
-            <TouchableOpacity 
-                style={styles.card}
+            <RestaurantCard
+                restaurant={item}
                 onPress={() => navigation.navigate('RestaurantMenu', { restaurantId: item.id, restaurantName: item.name })}
-                activeOpacity={0.9}
-            >
-                <View style={styles.imageContainer}>
-                    <Image source={{ uri: item.imageUrl }} style={styles.image} />
-                    {item.discount && (
-                        <View style={styles.discountBadge}>
-                            <Text style={styles.discountText}>{item.discount}</Text>
-                        </View>
-                    )}
-                    <TouchableOpacity 
-                        style={styles.favoriteBtn} 
-                        onPress={() => toggleFavorite(item)}
-                    >
-                        <Heart size={16} color={isFav ? '#A81C1C' : '#6B7280'} fill={isFav ? '#A81C1C' : 'transparent'} />
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.cardInfo}>
-                    <View style={styles.cardHeader}>
-                        <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-                        <View style={styles.ratingBadge}>
-                            <Star size={11} color="#FFFFFF" fill="#FFFFFF" />
-                            <Text style={styles.ratingText}>{item.rating}</Text>
-                        </View>
-                    </View>
-
-                    <Text style={styles.cuisines} numberOfLines={1}>{item.cuisines.join(', ')}</Text>
-
-                    <View style={styles.cardFooter}>
-                        <View style={styles.footerItem}>
-                            <Clock size={12} color="#6B7280" />
-                            <Text style={styles.footerText}>{item.deliveryTime}</Text>
-                        </View>
-                        <Text style={styles.dot}>•</Text>
-                        <Text style={styles.footerText}>{item.distance}</Text>
-                        <Text style={styles.dot}>•</Text>
-                        <Text style={styles.footerText}>{item.costForTwo}</Text>
-                    </View>
-                </View>
-            </TouchableOpacity>
+            />
         );
     };
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, Image, ActivityIndicator, ScrollView } from 'react-native';
-import { Search as SearchIcon, Star, Clock, Utensils, ChevronRight, ShoppingBag } from 'lucide-react-native';
+import { Search as SearchIcon, Star, Clock, Utensils, ArrowLeft, X, Mic, RotateCcw } from 'lucide-react-native';
 import { searchDishes, fetchRestaurants } from '../../data/api';
 import { Restaurant } from '../context/FilterContext';
 import { useToast } from '../context/ToastContext';
@@ -8,14 +8,13 @@ import { useCart } from '../context/CartContext';
 import { useUserLocation } from '../context/LocationContext';
 import { getFallbackImage } from '../../utils/imageUtils';
 import { haversineKm } from '../../utils/distanceUtils';
+import { RestaurantCard } from '../components/RestaurantCard';
 
-const TRENDING_SEARCHES = ['Biryani', 'Pizza', 'Burgers', 'Paneer', 'Thali', 'Ice Cream', 'Momos', 'Noodles'];
+const RECENT_SEARCHES = ['Biryani', 'Cafe Good Luck', 'Vohuman Cafe'];
 
 export const SearchScreen = ({ navigation }: { navigation: any }) => {
     const { showToast } = useToast();
-    const { cartItems, cartTotal } = useCart();
     const { selectedLocation } = useUserLocation();
-    const isCartNotEmpty = cartItems.length > 0;
     const [query, setQuery] = useState('');
     const [activeTab, setActiveTab] = useState<'dishes' | 'restaurants'>('dishes');
     const [allRestaurants, setAllRestaurants] = useState<Restaurant[]>([]);
@@ -80,7 +79,7 @@ export const SearchScreen = ({ navigation }: { navigation: any }) => {
         return () => clearTimeout(delayDebounceFn);
     }, [query, activeTab, allRestaurants, selectedLocation]);
 
-    const handleTrendingPress = (term: string) => {
+    const handleRecentSearchPress = (term: string) => {
         setQuery(term);
     };
 
@@ -132,127 +131,108 @@ export const SearchScreen = ({ navigation }: { navigation: any }) => {
 
     const renderRestaurantItem = ({ item }: { item: Restaurant }) => {
         return (
-            <TouchableOpacity 
-                style={styles.restaurantCard}
+            <RestaurantCard
+                restaurant={item}
                 onPress={() => navigation.navigate('RestaurantMenu', { restaurantId: item.id, restaurantName: item.name })}
-                activeOpacity={0.9}
-            >
-                <Image source={{ uri: item.imageUrl }} style={styles.restaurantImage} />
-                <View style={styles.restaurantInfo}>
-                    <View style={styles.restaurantHeader}>
-                        <Text style={styles.restaurantName} numberOfLines={1}>{item.name}</Text>
-                        <View style={styles.ratingBadge}>
-                            <Star size={12} color="white" fill="white" />
-                            <Text style={styles.ratingText}>{item.rating}</Text>
-                        </View>
-                    </View>
-                    <Text style={styles.cuisineText} numberOfLines={1}>{item.cuisines.join(', ')}</Text>
-                    <View style={styles.restaurantFooter}>
-                        <View style={styles.footerItem}>
-                            <Clock size={12} color="#6B7280" />
-                            <Text style={styles.footerText}>{item.deliveryTime}</Text>
-                        </View>
-                        <Text style={styles.dot}>•</Text>
-                        <Text style={styles.footerText}>{item.distance}</Text>
-                    </View>
-                </View>
-                <ChevronRight size={20} color="#9CA3AF" style={styles.chevron} />
-            </TouchableOpacity>
+            />
         );
     };
 
     return (
         <View style={styles.container}>
-            {/* Search Header */}
-            <View style={styles.header}>
-                <View style={styles.searchBarContainer}>
-                    <SearchIcon size={20} color="#9CA3AF" />
+            {/* Top Navigation Header */}
+            <View style={styles.topHeader}>
+                <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.goBack()}>
+                    <ArrowLeft size={20} color="#1F2937" />
+                </TouchableOpacity>
+
+                <Text style={styles.headerTitle}>Search for dishes & restaurants</Text>
+
+                <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.goBack()}>
+                    <X size={20} color="#6B7280" />
+                </TouchableOpacity>
+            </View>
+
+            {/* Red Outlined Search Input Bar */}
+            <View style={styles.searchBoxSection}>
+                <View style={styles.redSearchContainer}>
+                    <SearchIcon size={20} color="#FF4732" style={styles.searchIcon} />
                     <TextInput 
                         style={styles.searchInput}
-                        placeholder="Search for dishes, restaurants..."
+                        placeholder="Try Pizza"
+                        placeholderTextColor="#9CA3AF"
                         value={query}
                         onChangeText={setQuery}
                         autoFocus={true}
-                        placeholderTextColor="#9CA3AF"
                     />
+                    <View style={styles.verticalDivider} />
+                    <TouchableOpacity activeOpacity={0.7}>
+                        <Mic size={20} color="#FF4732" />
+                    </TouchableOpacity>
                 </View>
-                <TouchableOpacity 
-                    style={styles.headerCartButton}
-                    onPress={() => navigation.navigate('Cart')}
-                >
-                    <ShoppingBag size={22} color="#1F2937" />
-                    {cartItems.length > 0 && (
-                        <View style={styles.cartBadge}>
-                            <Text style={styles.cartBadgeText}>
-                                {cartItems.reduce((sum, i) => sum + i.quantity, 0)}
-                            </Text>
-                        </View>
-                    )}
-                </TouchableOpacity>
             </View>
 
-            {/* Segmented Control / Tabs */}
-            <View style={styles.tabBar}>
-                <TouchableOpacity 
-                    style={[styles.tabButton, activeTab === 'dishes' && styles.tabButtonActive]}
-                    onPress={() => setActiveTab('dishes')}
-                >
-                    <Text style={[styles.tabButtonText, activeTab === 'dishes' && styles.tabButtonTextActive]}>
-                        Dishes
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                    style={[styles.tabButton, activeTab === 'restaurants' && styles.tabButtonActive]}
-                    onPress={() => setActiveTab('restaurants')}
-                >
-                    <Text style={[styles.tabButtonText, activeTab === 'restaurants' && styles.tabButtonTextActive]}>
-                        Restaurants
-                    </Text>
-                </TouchableOpacity>
-            </View>
-
-            {/* Content Area */}
-            {initialLoading ? (
-                <View style={styles.centerContainer}>
-                    <ActivityIndicator size="large" color="#FF4732" />
-                    <Text style={styles.loadingText}>Initializing search...</Text>
-                </View>
-            ) : !query.trim() ? (
-                <ScrollView contentContainerStyle={styles.emptyContainer} showsVerticalScrollIndicator={false}>
-                    <Text style={styles.emptyTitle}>What are you craving today?</Text>
-                    <Text style={styles.emptySubtitle}>Search your favorite restaurant or dishes directly</Text>
+            {/* Content Body */}
+            {!query.trim() ? (
+                <View style={styles.recentSection}>
+                    <Text style={styles.sectionHeaderTitle}>RECENTLY SEARCHED RESTAURANTS</Text>
                     
-                    <Text style={styles.sectionTitle}>Trending Searches</Text>
-                    <View style={styles.trendingGrid}>
-                        {TRENDING_SEARCHES.map((term) => (
+                    <View style={styles.chipsRow}>
+                        {RECENT_SEARCHES.map((term) => (
                             <TouchableOpacity 
                                 key={term}
-                                style={styles.trendingPill}
-                                onPress={() => handleTrendingPress(term)}
+                                style={styles.recentChip}
+                                onPress={() => handleRecentSearchPress(term)}
+                                activeOpacity={0.8}
                             >
-                                <Text style={styles.trendingText}>{term}</Text>
+                                <RotateCcw size={14} color="#64748B" />
+                                <Text style={styles.recentChipText}>{term}</Text>
                             </TouchableOpacity>
                         ))}
                     </View>
-                </ScrollView>
-            ) : loading ? (
-                <View style={styles.centerContainer}>
-                    <ActivityIndicator size="large" color="#FF4732" />
-                    <Text style={styles.loadingText}>Searching...</Text>
-                </View>
-            ) : (activeTab === 'dishes' ? dishResults.length === 0 : filteredRestaurants.length === 0) ? (
-                <View style={styles.centerContainer}>
-                    <Text style={styles.noResultsText}>No results found for "{query}"</Text>
-                    <Text style={styles.noResultsSubtitle}>Try searching with different keywords</Text>
                 </View>
             ) : (
-                <FlatList 
-                    data={activeTab === 'dishes' ? dishResults : filteredRestaurants}
-                    renderItem={activeTab === 'dishes' ? renderDishItem : renderRestaurantItem}
-                    keyExtractor={(item) => item.id}
-                    contentContainerStyle={styles.listContent}
-                    showsVerticalScrollIndicator={false}
-                />
+                <>
+                    {/* Tab Navigation for Results */}
+                    <View style={styles.tabBar}>
+                        <TouchableOpacity 
+                            style={[styles.tabButton, activeTab === 'dishes' && styles.tabButtonActive]}
+                            onPress={() => setActiveTab('dishes')}
+                        >
+                            <Text style={[styles.tabButtonText, activeTab === 'dishes' && styles.tabButtonTextActive]}>
+                                Dishes
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={[styles.tabButton, activeTab === 'restaurants' && styles.tabButtonActive]}
+                            onPress={() => setActiveTab('restaurants')}
+                        >
+                            <Text style={[styles.tabButtonText, activeTab === 'restaurants' && styles.tabButtonTextActive]}>
+                                Restaurants
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {loading ? (
+                        <View style={styles.centerContainer}>
+                            <ActivityIndicator size="large" color="#FF4732" />
+                            <Text style={styles.loadingText}>Searching...</Text>
+                        </View>
+                    ) : (activeTab === 'dishes' ? dishResults.length === 0 : filteredRestaurants.length === 0) ? (
+                        <View style={styles.centerContainer}>
+                            <Text style={styles.noResultsText}>No results found for "{query}"</Text>
+                            <Text style={styles.noResultsSubtitle}>Try searching with different keywords</Text>
+                        </View>
+                    ) : (
+                        <FlatList 
+                            data={activeTab === 'dishes' ? dishResults : filteredRestaurants}
+                            renderItem={activeTab === 'dishes' ? renderDishItem : renderRestaurantItem}
+                            keyExtractor={(item) => item.id}
+                            contentContainerStyle={styles.listContent}
+                            showsVerticalScrollIndicator={false}
+                        />
+                    )}
+                </>
             )}
         </View>
     );
@@ -261,34 +241,92 @@ export const SearchScreen = ({ navigation }: { navigation: any }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#FFFFFF',
     },
-    header: {
+    topHeader: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        paddingTop: 50,
-        paddingHorizontal: 20,
-        paddingBottom: 12,
+        justifyContent: 'space-between',
+        paddingTop: 48,
+        paddingHorizontal: 16,
+        paddingBottom: 14,
         backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
+        borderBottomColor: '#F1F5F9',
     },
-    searchBarContainer: {
+    iconBtn: {
+        padding: 4,
+    },
+    headerTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#1F2937',
+        flex: 1,
+        textAlign: 'center',
+        marginHorizontal: 12,
+    },
+    searchBoxSection: {
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 20,
+        backgroundColor: '#FFFFFF',
+    },
+    redSearchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F3F4F6',
-        borderRadius: 16,
-        paddingHorizontal: 16,
+        borderWidth: 1.5,
+        borderColor: '#FF4732',
+        borderRadius: 18,
+        paddingHorizontal: 14,
         height: 50,
-        flex: 1,
-        marginRight: 12,
+        backgroundColor: '#FFFFFF',
+    },
+    searchIcon: {
+        marginRight: 10,
     },
     searchInput: {
         flex: 1,
-        marginLeft: 8,
         fontSize: 15,
         color: '#1F2937',
+        fontWeight: '500',
+    },
+    verticalDivider: {
+        width: 1,
+        height: 20,
+        backgroundColor: '#E5E7EB',
+        marginHorizontal: 12,
+    },
+    recentSection: {
+        paddingHorizontal: 16,
+        paddingTop: 4,
+    },
+    sectionHeaderTitle: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#64748B',
+        letterSpacing: 0.6,
+        marginBottom: 14,
+    },
+    chipsRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 10,
+    },
+    recentChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 16,
+        paddingVertical: 9,
+        borderRadius: 22,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        backgroundColor: '#FFFFFF',
+    },
+    recentChipText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#1E293B',
     },
     tabBar: {
         flexDirection: 'row',
@@ -300,7 +338,7 @@ const styles = StyleSheet.create({
     tabButton: {
         flex: 1,
         alignItems: 'center',
-        paddingVertical: 14,
+        paddingVertical: 12,
         borderBottomWidth: 2,
         borderBottomColor: 'transparent',
     },
@@ -326,47 +364,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#6B7280',
     },
-    emptyContainer: {
-        padding: 24,
-    },
-    emptyTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#1F2937',
-        textAlign: 'center',
-        marginTop: 20,
-    },
-    emptySubtitle: {
-        fontSize: 14,
-        color: '#6B7280',
-        textAlign: 'center',
-        marginTop: 8,
-        marginBottom: 32,
-    },
-    sectionTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#1F2937',
-        marginBottom: 16,
-    },
-    trendingGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 10,
-    },
-    trendingPill: {
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        borderRadius: 50,
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-    },
-    trendingText: {
-        fontSize: 13,
-        fontWeight: '500',
-        color: '#4B5563',
-    },
     noResultsText: {
         fontSize: 16,
         fontWeight: 'bold',
@@ -380,7 +377,7 @@ const styles = StyleSheet.create({
         marginTop: 6,
     },
     listContent: {
-        padding: 20,
+        padding: 16,
         gap: 16,
     },
     dishCard: {
@@ -499,99 +496,5 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#FF4732',
         letterSpacing: 0.5,
-    },
-    restaurantCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        padding: 12,
-        borderWidth: 1,
-        borderColor: '#F3F4F6',
-    },
-    restaurantImage: {
-        width: 70,
-        height: 70,
-        borderRadius: 12,
-        backgroundColor: '#F3F4F6',
-    },
-    restaurantInfo: {
-        flex: 1,
-        marginLeft: 12,
-        marginRight: 6,
-    },
-    restaurantHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    restaurantName: {
-        fontSize: 15,
-        fontWeight: 'bold',
-        color: '#1F2937',
-        flex: 1,
-        marginRight: 8,
-    },
-    ratingBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FF4732',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 6,
-        gap: 3,
-    },
-    ratingText: {
-        color: 'white',
-        fontSize: 10,
-        fontWeight: 'bold',
-    },
-    cuisineText: {
-        fontSize: 12,
-        color: '#6B7280',
-        marginTop: 2,
-    },
-    restaurantFooter: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 6,
-    },
-    footerItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 3,
-    },
-    footerText: {
-        fontSize: 11,
-        color: '#6B7280',
-    },
-    dot: {
-        marginHorizontal: 4,
-        color: '#D1D5DB',
-    },
-    chevron: {
-        marginRight: 4,
-    },
-    headerCartButton: {
-        position: 'relative',
-        padding: 8,
-    },
-    cartBadge: {
-        position: 'absolute',
-        top: 2,
-        right: 2,
-        backgroundColor: '#FF4732',
-        borderRadius: 9,
-        width: 18,
-        height: 18,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1.5,
-        borderColor: '#FFFFFF',
-    },
-    cartBadgeText: {
-        color: '#FFFFFF',
-        fontSize: 9,
-        fontWeight: 'bold',
     },
 });

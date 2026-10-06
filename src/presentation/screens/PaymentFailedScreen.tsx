@@ -3,7 +3,18 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'rea
 import { XCircle, RefreshCw, ShoppingBag, ArrowLeft } from 'lucide-react-native';
 
 export const PaymentFailedScreen = ({ route, navigation }: { route: any; navigation: any }) => {
-    const errorMsg = route?.params?.errorMessage || 'Payment transaction failed or was cancelled.';
+    const getUrlParam = (param: string) => {
+        if (typeof window !== 'undefined' && window.location && window.location.search) {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                return urlParams.get(param);
+            } catch (_) {}
+        }
+        return null;
+    };
+
+    const orderId = route?.params?.orderId || getUrlParam('orderId') || null;
+    const errorMsg = route?.params?.errorMessage || getUrlParam('error') || getUrlParam('message') || 'Payment transaction failed or was cancelled.';
 
     const handleRetry = () => {
         navigation.navigate('Cart');

@@ -4,7 +4,7 @@ import { useUserLocation } from '../context/LocationContext';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { getCustomerProfile, updateCustomerProfile, addAddress, deleteAddress, reverseGeocode } from '../../data/api';
-import { User, MapPin, Plus, Trash2, Check, LogOut, Mail, Phone, Edit2, ChevronRight, Bell, HelpCircle, Package } from 'lucide-react-native';
+import { User, MapPin, Plus, Trash2, Check, LogOut, Mail, Phone, Edit2, ChevronRight, Bell, HelpCircle, Package, ArrowLeft } from 'lucide-react-native';
 import { CustomMapView } from '../components/CustomMapView';
 import { getCurrentPositionWithFallback } from '../../utils/geolocation';
 
@@ -196,6 +196,18 @@ export const ProfileScreen = ({ navigation }: { navigation: any }) => {
 
     return (
         <View style={styles.container}>
+            {/* Top Bar Header */}
+            <View style={styles.topHeader}>
+                <View style={styles.headerLeft}>
+                    {navigation.canGoBack() && (
+                        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+                            <ArrowLeft size={22} color="#111827" />
+                        </TouchableOpacity>
+                    )}
+                    <Text style={styles.headerTitle}>My Profile</Text>
+                </View>
+            </View>
+
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 
                 {/* Header User Info */}
@@ -474,6 +486,27 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#FAFAFA',
+    },
+    topHeader: {
+        paddingTop: 50,
+        paddingHorizontal: 20,
+        paddingBottom: 12,
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    backBtn: {
+        padding: 4,
+    },
+    headerTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#111827',
     },
     centerContainer: {
         flex: 1,

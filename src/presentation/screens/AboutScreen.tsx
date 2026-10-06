@@ -30,7 +30,7 @@ export const AboutScreen = ({ navigation }: { navigation: any }) => {
         "100% Verified Local Kitchens & Fine Dining",
         "Live GPS Order & Delivery Tracking",
         "Dedicated Customer Support Team",
-        "Seamless Cash-on-Delivery & PayU Online Payments"
+        "Secure PayU Online Payments"
     ];
 
     return (

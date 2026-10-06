@@ -56,11 +56,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const sessionCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const syncDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // Session Warning States
-    const [isSessionWarningOpen, setIsSessionWarningOpen] = useState(false);
-    const [isRefreshingToken, setIsRefreshingToken] = useState(false);
-    const [expiresInSeconds, setExpiresInSeconds] = useState(0);
-    const [refreshError, setRefreshError] = useState<string | null>(null);
+    // Session Background Refresh Ref
+    const isRefreshingRef = useRef(false);
 
     // Conflict State
     const [conflictInfo, setConflictInfo] = useState<{ name: string, id: string, type: 'reconcile' | 'add' } | null>(null);
@@ -599,55 +596,53 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         hasSyncedAfterLogin.current = false;
 
         setIsLoggedIn(false);
-        setIsSessionWarningOpen(false);
     }, []);
 
-    const handleStayLoggedIn = async () => {
-        setIsRefreshingToken(true);
-        setRefreshError(null);
-        const result = await refreshToken();
-        setIsRefreshingToken(false);
-        if (result) {
-            setIsSessionWarningOpen(false);
-            refreshLoginStatus();
-        } else {
-            setRefreshError("Could not extend session. Please log in again.");
-            setTimeout(() => {
-                handleLogout();
-            }, 2500);
-        }
-    };
-
-    // SESSION MONITORING
+    // SILENT BACKGROUND TOKEN REFRESH & SESSION MONITORING
     useEffect(() => {
-        const checkSession = () => {
+        const checkAndRefreshToken = async () => {
+            if (!isLoggedIn) return;
+
             const expiresAt = localStorage.getItem('customer_token_expires_at');
-            if (expiresAt && isLoggedIn) {
+            if (expiresAt) {
                 const expiryTime = new Date(expiresAt).getTime();
                 const now = Date.now();
                 const timeLeft = expiryTime - now;
-                const timeLeftSeconds = Math.max(0, Math.floor(timeLeft / 1000));
-
-                setExpiresInSeconds(timeLeftSeconds);
 
                 if (timeLeft <= 0) {
+                    if (!isRefreshingRef.current) {
+                        isRefreshingRef.current = true;
+                        const res = await refreshToken();
+                        isRefreshingRef.current = false;
+                        if (res) {
+                            refreshLoginStatus();
+                            return;
+                        }
+                    }
                     handleLogout();
-                } else if (timeLeft < 5 * 60 * 1000) {
-                    setIsSessionWarningOpen(true);
-                } else {
-                    setIsSessionWarningOpen(false);
+                } else if (timeLeft < 10 * 60 * 1000) {
+                    if (!isRefreshingRef.current) {
+                        isRefreshingRef.current = true;
+                        try {
+                            const res = await refreshToken();
+                            if (res) {
+                                refreshLoginStatus();
+                            }
+                        } catch (err) {
+                            console.error("Background token refresh error:", err);
+                        } finally {
+                            isRefreshingRef.current = false;
+                        }
+                    }
                 }
-            } else {
-                setIsSessionWarningOpen(false);
             }
         };
 
         if (isLoggedIn) {
-            sessionCheckIntervalRef.current = setInterval(checkSession, 1000);
-            checkSession();
+            sessionCheckIntervalRef.current = setInterval(checkAndRefreshToken, 15000);
+            checkAndRefreshToken();
         } else {
             if (sessionCheckIntervalRef.current) clearInterval(sessionCheckIntervalRef.current);
-            setIsSessionWarningOpen(false);
         }
 
         return () => {
@@ -684,28 +679,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }}>
             {children}
 
-            {/* Session Expiry Warning Modal */}
-            <Modal visible={isSessionWarningOpen} transparent animationType="fade">
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Session Expiring</Text>
-                        <Text style={styles.modalDescription}>
-                            Your session will expire in {Math.floor(expiresInSeconds / 60)}m {expiresInSeconds % 60}s. Would you like to stay logged in?
-                        </Text>
-                        {refreshError && <Text style={styles.errorText}>{refreshError}</Text>}
-                        <View style={styles.buttonRow}>
-                            <TouchableOpacity style={styles.buttonSecondary} onPress={handleLogout}>
-                                <Text style={styles.buttonSecondaryText}>Logout</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.buttonPrimary} onPress={handleStayLoggedIn} disabled={isRefreshingToken}>
-                                <Text style={styles.buttonPrimaryText}>
-                                    {isRefreshingToken ? "Extending..." : "Stay Logged In"}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
+
 
             {/* Conflict Resolution Modal */}
             <Modal visible={conflictInfo !== null} transparent animationType="fade">

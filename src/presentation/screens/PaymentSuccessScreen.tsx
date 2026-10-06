@@ -5,8 +5,19 @@ import { useCart } from '../context/CartContext';
 
 export const PaymentSuccessScreen = ({ route, navigation }: { route: any; navigation: any }) => {
     const { clearCart } = useCart();
-    const orderId = route?.params?.orderId || 'HIV-' + Math.floor(100000 + Math.random() * 900000);
-    const amount = route?.params?.amount || null;
+
+    const getUrlParam = (param: string) => {
+        if (typeof window !== 'undefined' && window.location && window.location.search) {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                return urlParams.get(param);
+            } catch (_) {}
+        }
+        return null;
+    };
+
+    const orderId = route?.params?.orderId || getUrlParam('orderId') || 'HIV-' + Math.floor(100000 + Math.random() * 900000);
+    const amount = route?.params?.amount || getUrlParam('amount') || null;
 
     useEffect(() => {
         clearCart();

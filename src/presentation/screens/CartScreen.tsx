@@ -16,7 +16,8 @@ export const CartScreen = ({ navigation }: { navigation: any }) => {
         deliveryStatus, setDeliveryStatus,
         deliveryError, setDeliveryError,
         isCheckingDelivery, setIsCheckingDelivery,
-        includeCutlery, setIncludeCutlery
+        includeCutlery, setIncludeCutlery,
+        isLoggedIn
     } = useCart();
 
     const { selectedLocation, addresses } = useUserLocation();
@@ -24,7 +25,7 @@ export const CartScreen = ({ navigation }: { navigation: any }) => {
 
     const [instructions, setInstructions] = useState('');
     const [tipAmount, setTipAmount] = useState(0);
-    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'CASH' | 'ONLINE'>('CASH');
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'ONLINE'>('ONLINE');
     const [agreedToTerms, setAgreedToTerms] = useState(true);
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
@@ -122,6 +123,12 @@ export const CartScreen = ({ navigation }: { navigation: any }) => {
     }, [selectedLocation, restaurantId, cartTotal, fulfillmentType, restaurantCoords]);
 
     const handlePlaceOrder = async () => {
+        if (!isLoggedIn) {
+            showToast("Please log in to proceed with your order", "info");
+            navigation.navigate('SignIn');
+            return;
+        }
+
         if (!restaurantId) {
             showToast("Restaurant details are missing", "error");
             return;
@@ -157,7 +164,7 @@ export const CartScreen = ({ navigation }: { navigation: any }) => {
             } catch (_) {}
 
             const payload = {
-                paymentId: selectedPaymentMethod,
+                paymentId: 'ONLINE',
                 paymentTransactionId: "",
                 deliveryQuoteId: deliveryQuote?.id || "",
                 fulfillmentType: fulfillmentType,
@@ -205,17 +212,11 @@ export const CartScreen = ({ navigation }: { navigation: any }) => {
 
             const order = await placeOrder(payload);
 
-            if (selectedPaymentMethod === 'CASH') {
-                showToast("Order placed successfully!", "success");
-                clearCart();
-                navigation.navigate('OrderTracking', { orderId: order.id });
-            } else {
-                const params = await startPayment(order.id);
-                navigation.navigate('PaymentWebView', { 
-                    paymentParams: params,
-                    orderId: order.id
-                });
-            }
+            const params = await startPayment(order.id);
+            navigation.navigate('PaymentWebView', { 
+                paymentParams: params,
+                orderId: order.id
+            });
 
         } catch (e: any) {
             console.error("Order placement failed:", e);
@@ -256,8 +257,13 @@ export const CartScreen = ({ navigation }: { navigation: any }) => {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Review Order</Text>
-                <TouchableOpacity onPress={clearCart}>
+                <View style={styles.headerLeft}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <ArrowLeft size={22} color="#1F2937" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Review Order</Text>
+                </View>
+                <TouchableOpacity onPress={clearCart} style={styles.trashBtn}>
                     <Trash2 size={20} color="#EF4444" />
                 </TouchableOpacity>
             </View>
@@ -375,34 +381,7 @@ export const CartScreen = ({ navigation }: { navigation: any }) => {
                     </View>
                 )}
 
-                {/* Payment Option Selection */}
-                <View style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>Payment Method</Text>
-                    <TouchableOpacity 
-                        style={[styles.paymentSelectRow, selectedPaymentMethod === 'CASH' && styles.paymentSelectRowActive]}
-                        onPress={() => setSelectedPaymentMethod('CASH')}
-                    >
-                        <View style={styles.paymentRadioOuter}>
-                            {selectedPaymentMethod === 'CASH' && <View style={styles.paymentRadioInner} />}
-                        </View>
-                        <View style={styles.paymentSelectText}>
-                            <Text style={styles.paymentSelectTitle}>Cash on Delivery</Text>
-                            <Text style={styles.paymentSelectDesc}>Pay with cash or UPI at your door</Text>
-                        </View>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                        style={[styles.paymentSelectRow, selectedPaymentMethod === 'ONLINE' && styles.paymentSelectRowActive]}
-                        onPress={() => setSelectedPaymentMethod('ONLINE')}
-                    >
-                        <View style={styles.paymentRadioOuter}>
-                            {selectedPaymentMethod === 'ONLINE' && <View style={styles.paymentRadioInner} />}
-                        </View>
-                        <View style={styles.paymentSelectText}>
-                            <Text style={styles.paymentSelectTitle}>Online Payment (PayU)</Text>
-                            <Text style={styles.paymentSelectDesc}>Pay securely via Cards, Netbanking, or UPI</Text>
-                        </View>
-                    </TouchableOpacity>
-                </View>
+
 
                 {/* Order Summary breakdown */}
                 <View style={styles.sectionCard}>
@@ -474,7 +453,7 @@ export const CartScreen = ({ navigation }: { navigation: any }) => {
                         <Text style={styles.checkoutBtnText}>
                             {fulfillmentType === 'Delivery' && deliveryStatus === 'error' 
                                 ? 'Delivery Unavailable' 
-                                : `Place Order • ₹${grandTotal}`
+                                : `Proceed to Pay • ₹${grandTotal}`
                             }
                         </Text>
                     )}
@@ -582,6 +561,17 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
         borderBottomColor: '#F3F4F6',
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    backBtn: {
+        padding: 4,
+    },
+    trashBtn: {
+        padding: 4,
     },
     headerTitle: {
         fontSize: 18,

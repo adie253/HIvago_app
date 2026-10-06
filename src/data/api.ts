@@ -48,12 +48,42 @@ export const isTokenValid = (): boolean => {
 };
 
 export const authFetch = async (endpoint: string, options: RequestInit = {}): Promise<Response> => {
-    const token = localStorage.getItem('customer_token');
+    let token = localStorage.getItem('customer_token');
+    const expiresAt = localStorage.getItem('customer_token_expires_at');
+
+    // Proactively refresh token if close to expiry (< 5 minutes)
+    if (token && expiresAt) {
+        const timeLeft = new Date(expiresAt).getTime() - Date.now();
+        if (timeLeft < 5 * 60 * 1000 && timeLeft > 0) {
+            try {
+                const refreshed = await refreshToken();
+                if (refreshed && refreshed.accessToken) {
+                    token = refreshed.accessToken;
+                }
+            } catch (_) {}
+        }
+    }
+
     const headers = new Headers(options.headers || {});
     if (token && isTokenValid()) {
         headers.set('Authorization', `Bearer ${token}`);
     }
-    return fetch(`${BASE_URL}${endpoint}`, { ...options, headers });
+
+    const response = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers });
+
+    // Handle 401 Unauthorized by auto-refreshing token and retrying once
+    if (response.status === 401 && token) {
+        try {
+            const refreshed = await refreshToken();
+            if (refreshed && refreshed.accessToken) {
+                const retryHeaders = new Headers(options.headers || {});
+                retryHeaders.set('Authorization', `Bearer ${refreshed.accessToken}`);
+                return fetch(`${BASE_URL}${endpoint}`, { ...options, headers: retryHeaders });
+            }
+        } catch (_) {}
+    }
+
+    return response;
 };
 
 export interface ReverseGeocodeResult {

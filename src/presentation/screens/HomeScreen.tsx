@@ -5,8 +5,9 @@ import { useUserLocation, Address } from '../context/LocationContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { useToast } from '../context/ToastContext';
 import { useCart } from '../context/CartContext';
-import { MapPin, Search, Star, Clock, Heart, SlidersHorizontal, ChevronDown, Check, ShoppingBag, Navigation, Home, Menu, Mic, X, User, Package, LogOut, Smartphone, Truck, Linkedin, Instagram, Twitter, Youtube, Facebook, Mail, Phone, Fullscreen } from 'lucide-react-native';
+import { MapPin, Search, Star, Clock, Heart, SlidersHorizontal, ChevronDown, Check, ShoppingBag, Navigation, Home, Menu, Mic, X, User, Package, LogOut, Smartphone, Truck, Share2, Globe, MessageSquare, Tv, Send, Mail, Phone } from 'lucide-react-native';
 import { FooterLogoSvg } from '../components/FooterLogoSvg';
+import { RestaurantCard } from '../components/RestaurantCard';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_WIDTH = SCREEN_WIDTH;
@@ -126,58 +127,12 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
 
     // Card Renderer for Horizontally Scrollable Restaurant Lists
     const renderHorizontalRestaurantCard = ({ item }: { item: Restaurant }) => {
-        const isFav = isFavorite(item.id);
         return (
-            <TouchableOpacity
-                style={styles.horizontalCard}
+            <RestaurantCard
+                restaurant={item}
                 onPress={() => handleRestaurantPress(item)}
-                activeOpacity={0.9}
-            >
-                <View style={styles.horizontalImageContainer}>
-                    <Image source={{ uri: item.imageUrl }} style={styles.cardImage} />
-                    {item.discount && (
-                        <View style={styles.discountBadge}>
-                            <Text style={styles.discountText}>{item.discount}</Text>
-                        </View>
-                    )}
-                    {item.acceptsPickup && (
-                        <View style={styles.pickupBadge}>
-                            <Text style={styles.pickupBadgeText}>PICKUP</Text>
-                        </View>
-                    )}
-                    <TouchableOpacity
-                        style={styles.favoriteBtn}
-                        onPress={() => toggleFavorite(item)}
-                    >
-                        <Heart size={16} color={isFav ? '#A81C1C' : '#6B7280'} fill={isFav ? '#A81C1C' : 'transparent'} />
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.horizontalCardInfo}>
-                    <View style={styles.cardHeader}>
-                        <Text style={styles.restaurantName} numberOfLines={1}>{item.name}</Text>
-                        <View style={styles.ratingBadge}>
-                            <Star size={11} color="#FFFFFF" fill="#FFFFFF" />
-                            <Text style={styles.ratingText}>{item.rating}</Text>
-                        </View>
-                    </View>
-
-                    <Text style={styles.cuisinesText} numberOfLines={1}>
-                        {item.cuisines.join(', ')}
-                    </Text>
-
-                    <View style={styles.cardFooter}>
-                        <View style={styles.footerItem}>
-                            <Clock size={12} color="#6B7280" />
-                            <Text style={styles.footerText}>{item.deliveryTime}</Text>
-                        </View>
-                        <Text style={styles.dot}>•</Text>
-                        <Text style={styles.footerText}>{item.distance}</Text>
-                        <Text style={styles.dot}>•</Text>
-                        <Text style={styles.footerText}>{item.costForTwo}</Text>
-                    </View>
-                </View>
-            </TouchableOpacity>
+                style={{ width: 250 }}
+            />
         );
     };
 
@@ -191,13 +146,14 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
 
                 <View className="flex-row items-center gap-3">
                     <TouchableOpacity
-                        className="w-10 h-10 rounded-full bg-white/20 items-center justify-center relative"
+                        style={styles.headerIconButton}
                         onPress={() => navigation.navigate('Cart')}
+                        activeOpacity={0.8}
                     >
                         <ShoppingBag size={22} color="#FFFFFF" />
                         {cartItems.length > 0 && (
-                            <View className="absolute -top-1 -right-1 bg-yellow-400 rounded-full w-4.5 h-4.5 items-center justify-center">
-                                <Text className="text-[#A81C1C] text-[10px] font-black">
+                            <View style={styles.cartBadgeCircle}>
+                                <Text style={styles.cartBadgeCircleText}>
                                     {cartItems.reduce((sum, i) => sum + i.quantity, 0)}
                                 </Text>
                             </View>
@@ -205,8 +161,9 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        className="w-10 h-10 rounded-full bg-white/20 items-center justify-center"
+                        style={styles.headerIconButton}
                         onPress={() => setIsMenuDrawerOpen(true)}
+                        activeOpacity={0.8}
                     >
                         <Menu size={24} color="#FFFFFF" />
                     </TouchableOpacity>
@@ -217,7 +174,14 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
             <View className="flex-row justify-between items-center px-4 py-2.5 bg-gray-50 border-b border-gray-100">
                 <TouchableOpacity
                     className="flex-row items-center gap-2.5 flex-1"
-                    onPress={() => setIsAddressModalOpen(true)}
+                    onPress={() => {
+                        if (!isLoggedIn) {
+                            showToast("Please log in to change your location", "info");
+                            navigation.navigate('SignIn');
+                        } else {
+                            setIsAddressModalOpen(true);
+                        }
+                    }}
                     activeOpacity={0.7}
                 >
                     <View className="w-8 h-8 rounded-full bg-[#FFF0EF] items-center justify-center">
@@ -287,20 +251,16 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
 
                 {/* Search Bar + VEG Switch Row */}
                 <View className="flex-row items-center px-4 mb-3 gap-3">
-                    <View className="flex-1 flex-row items-center bg-gray-50 rounded-xl px-3.5 h-12 border border-gray-200">
+                    <TouchableOpacity
+                        className="flex-1 flex-row items-center bg-gray-50 rounded-xl px-3.5 h-12 border border-gray-200"
+                        onPress={() => navigation.navigate('Search')}
+                        activeOpacity={0.8}
+                    >
                         <Search size={18} color="#A81C1C" style={{ marginRight: 8 }} />
-                        <TextInput
-                            className="flex-1 text-xs text-gray-800"
-                            placeholder="Search for food, restaurants..."
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
-                            placeholderTextColor="#9CA3AF"
-                        />
+                        <Text className="flex-1 text-xs text-gray-400 font-normal">Search for dishes & restaurants...</Text>
                         <View className="w-px h-5 bg-gray-200 mx-2.5" />
-                        <TouchableOpacity onPress={() => navigation.navigate('Search')}>
-                            <Mic size={18} color="#A81C1C" />
-                        </TouchableOpacity>
-                    </View>
+                        <Mic size={18} color="#A81C1C" />
+                    </TouchableOpacity>
 
                     {/* VEG Toggle Switch */}
                     <View className="items-center justify-center">
@@ -318,70 +278,6 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                         </TouchableOpacity>
                     </View>
                 </View>
-
-                {/* Filter Pills Strip */}
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12, gap: 8 }}
-                >
-                    <TouchableOpacity
-                        className={`flex-row items-center px-3 py-1.5 rounded-full border ${
-                            sortBy !== 'Relevance' ? 'border-[#A81C1C] bg-[#FFF0EF]' : 'border-gray-200 bg-white'
-                        }`}
-                        onPress={() => setIsSortModalOpen(true)}
-                    >
-                        <SlidersHorizontal size={12} color={sortBy !== 'Relevance' ? '#A81C1C' : '#4B5563'} style={{ marginRight: 4 }} />
-                        <Text className={`text-xs font-semibold ${sortBy !== 'Relevance' ? 'text-[#A81C1C]' : 'text-gray-600'}`}>
-                            Sort: {sortBy}
-                        </Text>
-                        <ChevronDown size={12} color={sortBy !== 'Relevance' ? '#A81C1C' : '#4B5563'} style={{ marginLeft: 2 }} />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        className={`flex-row items-center px-3 py-1.5 rounded-full border ${
-                            minRating === 4 ? 'border-[#A81C1C] bg-[#FFF0EF]' : 'border-gray-200 bg-white'
-                        }`}
-                        onPress={() => setMinRating(minRating === 4 ? 0 : 4)}
-                    >
-                        <Text className={`text-xs font-semibold ${minRating === 4 ? 'text-[#A81C1C]' : 'text-gray-600'}`}>
-                            Rating 4.0+
-                        </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        className={`flex-row items-center px-3 py-1.5 rounded-full border ${
-                            isJainOptions ? 'border-[#A81C1C] bg-[#FFF0EF]' : 'border-gray-200 bg-white'
-                        }`}
-                        onPress={() => setIsJainOptions(!isJainOptions)}
-                    >
-                        <Text className={`text-xs font-semibold ${isJainOptions ? 'text-[#A81C1C]' : 'text-gray-600'}`}>
-                            Jain Food
-                        </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        className={`flex-row items-center px-3 py-1.5 rounded-full border ${
-                            isVeganFriendly ? 'border-[#A81C1C] bg-[#FFF0EF]' : 'border-gray-200 bg-white'
-                        }`}
-                        onPress={() => setIsVeganFriendly(!isVeganFriendly)}
-                    >
-                        <Text className={`text-xs font-semibold ${isVeganFriendly ? 'text-[#A81C1C]' : 'text-gray-600'}`}>
-                            Vegan
-                        </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        className={`flex-row items-center px-3 py-1.5 rounded-full border ${
-                            isOpenNow ? 'border-[#A81C1C] bg-[#FFF0EF]' : 'border-gray-200 bg-white'
-                        }`}
-                        onPress={() => setIsOpenNow(!isOpenNow)}
-                    >
-                        <Text className={`text-xs font-semibold ${isOpenNow ? 'text-[#A81C1C]' : 'text-gray-600'}`}>
-                            Open Now
-                        </Text>
-                    </TouchableOpacity>
-                </ScrollView>
 
                 {/* Categories Cards Row */}
                 <View className="mb-5">
@@ -437,7 +333,7 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                 ) : (
                     <>
                         {/* Section 1: Popular Restaurants */}
-                        <View className="mb-6">
+                        <View className="mb-5">
                             <View className="flex-row justify-between items-center px-4 mb-3">
                                 <Text className="text-lg font-bold text-gray-900">Popular Restaurants</Text>
                                 <TouchableOpacity onPress={() => navigation.navigate('Search')}>
@@ -453,6 +349,70 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                                 contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}
                             />
                         </View>
+
+                        {/* Filter Pills Strip */}
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16, gap: 8 }}
+                        >
+                            <TouchableOpacity
+                                className={`flex-row items-center px-3 py-1.5 rounded-full border ${
+                                    sortBy !== 'Relevance' ? 'border-[#A81C1C] bg-[#FFF0EF]' : 'border-gray-200 bg-white'
+                                }`}
+                                onPress={() => setIsSortModalOpen(true)}
+                            >
+                                <SlidersHorizontal size={12} color={sortBy !== 'Relevance' ? '#A81C1C' : '#4B5563'} style={{ marginRight: 4 }} />
+                                <Text className={`text-xs font-semibold ${sortBy !== 'Relevance' ? 'text-[#A81C1C]' : 'text-gray-600'}`}>
+                                    Sort: {sortBy}
+                                </Text>
+                                <ChevronDown size={12} color={sortBy !== 'Relevance' ? '#A81C1C' : '#4B5563'} style={{ marginLeft: 2 }} />
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                className={`flex-row items-center px-3 py-1.5 rounded-full border ${
+                                    minRating === 4 ? 'border-[#A81C1C] bg-[#FFF0EF]' : 'border-gray-200 bg-white'
+                                }`}
+                                onPress={() => setMinRating(minRating === 4 ? 0 : 4)}
+                            >
+                                <Text className={`text-xs font-semibold ${minRating === 4 ? 'text-[#A81C1C]' : 'text-gray-600'}`}>
+                                    Rating 4.0+
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                className={`flex-row items-center px-3 py-1.5 rounded-full border ${
+                                    isJainOptions ? 'border-[#A81C1C] bg-[#FFF0EF]' : 'border-gray-200 bg-white'
+                                }`}
+                                onPress={() => setIsJainOptions(!isJainOptions)}
+                            >
+                                <Text className={`text-xs font-semibold ${isJainOptions ? 'text-[#A81C1C]' : 'text-gray-600'}`}>
+                                    Jain Food
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                className={`flex-row items-center px-3 py-1.5 rounded-full border ${
+                                    isVeganFriendly ? 'border-[#A81C1C] bg-[#FFF0EF]' : 'border-gray-200 bg-white'
+                                }`}
+                                onPress={() => setIsVeganFriendly(!isVeganFriendly)}
+                            >
+                                <Text className={`text-xs font-semibold ${isVeganFriendly ? 'text-[#A81C1C]' : 'text-gray-600'}`}>
+                                    Vegan
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                className={`flex-row items-center px-3 py-1.5 rounded-full border ${
+                                    isOpenNow ? 'border-[#A81C1C] bg-[#FFF0EF]' : 'border-gray-200 bg-white'
+                                }`}
+                                onPress={() => setIsOpenNow(!isOpenNow)}
+                            >
+                                <Text className={`text-xs font-semibold ${isOpenNow ? 'text-[#A81C1C]' : 'text-gray-600'}`}>
+                                    Open Now
+                                </Text>
+                            </TouchableOpacity>
+                        </ScrollView>
 
                         {/* Section 2: Nearby Restaurants */}
                         <View className="mb-6">
@@ -601,19 +561,19 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                                 <Text className="text-xs font-black text-white tracking-widest mb-3">SOCIAL LINKS</Text>
                                 <View className="flex-row gap-3 mt-1">
                                     <TouchableOpacity className="w-9 h-9 rounded-full bg-white/15 items-center justify-center" onPress={() => showToast("LinkedIn", "info")}>
-                                        <Linkedin size={16} color="#FFFFFF" />
+                                        <Share2 size={16} color="#FFFFFF" />
                                     </TouchableOpacity>
                                     <TouchableOpacity className="w-9 h-9 rounded-full bg-white/15 items-center justify-center" onPress={() => showToast("Instagram", "info")}>
-                                        <Instagram size={16} color="#FFFFFF" />
+                                        <Globe size={16} color="#FFFFFF" />
                                     </TouchableOpacity>
                                     <TouchableOpacity className="w-9 h-9 rounded-full bg-white/15 items-center justify-center" onPress={() => showToast("Twitter", "info")}>
-                                        <Twitter size={16} color="#FFFFFF" />
+                                        <MessageSquare size={16} color="#FFFFFF" />
                                     </TouchableOpacity>
                                     <TouchableOpacity className="w-9 h-9 rounded-full bg-white/15 items-center justify-center" onPress={() => showToast("YouTube", "info")}>
-                                        <Youtube size={16} color="#FFFFFF" />
+                                        <Tv size={16} color="#FFFFFF" />
                                     </TouchableOpacity>
                                     <TouchableOpacity className="w-9 h-9 rounded-full bg-white/15 items-center justify-center" onPress={() => showToast("Facebook", "info")}>
-                                        <Facebook size={16} color="#FFFFFF" />
+                                        <Send size={16} color="#FFFFFF" />
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -888,24 +848,60 @@ const styles = StyleSheet.create({
         gap: 16,
     },
     headerIconButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
         position: 'relative',
-        padding: 4,
+        overflow: 'visible',
     },
     cartBadge: {
         position: 'absolute',
-        top: -2,
-        right: -4,
+        top: -3,
+        right: -3,
         backgroundColor: '#FFFFFF',
-        borderRadius: 10,
-        width: 18,
+        borderRadius: 9,
+        minWidth: 18,
         height: 18,
+        paddingHorizontal: 3,
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 1.5,
+        borderColor: '#A81C1C',
+        zIndex: 10,
     },
     cartBadgeText: {
         color: '#A81C1C',
         fontSize: 10,
         fontWeight: 'bold',
+        textAlign: 'center',
+        lineHeight: 13,
+        includeFontPadding: false,
+    },
+    cartBadgeCircle: {
+        position: 'absolute',
+        top: -3,
+        right: -3,
+        backgroundColor: '#FACC15',
+        minWidth: 18,
+        height: 18,
+        borderRadius: 9,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 3,
+        borderWidth: 1.5,
+        borderColor: '#A81C1C',
+        zIndex: 10,
+    },
+    cartBadgeCircleText: {
+        color: '#A81C1C',
+        fontSize: 10,
+        fontWeight: '900',
+        textAlign: 'center',
+        lineHeight: 13,
+        includeFontPadding: false,
     },
     locationSubHeader: {
         flexDirection: 'row',

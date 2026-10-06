@@ -1,3 +1,11 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Suppress PWA Install Prompts */
+[class*="install-prompt"], [id*="install-prompt"], [class*="pwa-install"], #pwa-banner, .pwa-prompt {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

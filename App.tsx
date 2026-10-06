@@ -109,6 +109,24 @@ import { ActivityIndicator, View } from 'react-native';
 
 const queryClient = new QueryClient();
 
+const linking = {
+  prefixes: [
+    'hivago://', 
+    'https://hivago.vercel.app', 
+    'http://localhost:8081',
+    typeof window !== 'undefined' && window.location ? window.location.origin : ''
+  ].filter(Boolean),
+  config: {
+    screens: {
+      MainTabs: '',
+      PaymentSuccess: 'payment_success',
+      PaymentFailed: 'payment_failed',
+      OrderTracking: 'tracking/:orderId',
+      Cart: 'cart',
+    },
+  },
+};
+
 export default function App() {
   const [storageReady, setStorageReady] = useState(false);
 
@@ -119,6 +137,19 @@ export default function App() {
         console.error('Failed to initialize storage', err);
         setStorageReady(true);
       });
+
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      const handleBeforeInstallPrompt = (e: Event) => {
+        e.preventDefault();
+        return false;
+      };
+      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      return () => {
+        if (typeof window.removeEventListener === 'function') {
+          window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        }
+      };
+    }
   }, []);
 
   if (!storageReady) {
@@ -139,7 +170,7 @@ export default function App() {
                 <CartProvider>
                   <FavoritesProvider>
                     <NotificationProvider>
-                      <NavigationContainer>
+                      <NavigationContainer linking={linking}>
                         <StatusBar style="dark" />
                         <Stack.Navigator initialRouteName="MainTabs" screenOptions={{ headerShown: false }}>
                           <Stack.Screen name="MainTabs" component={MainTabNavigator} />

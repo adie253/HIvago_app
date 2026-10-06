@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ActivityIndicator, Text, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ActivityIndicator, Text, TouchableOpacity, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { verifyPayment } from '../../data/api';
 import { useToast } from '../context/ToastContext';
@@ -24,6 +24,55 @@ export const PaymentWebViewScreen = ({ route, navigation }: { route: any, naviga
     const surl = paymentParams?.surl || '';
     const furl = paymentParams?.furl || '';
     const hash = paymentParams?.hash || '';
+
+    // Determine current app origin so PayU returns directly to the active app instance
+    const currentOrigin = (typeof window !== 'undefined' && window.location && window.location.origin)
+        ? window.location.origin
+        : '';
+
+    const effectiveSurl = (currentOrigin && !currentOrigin.startsWith('file:'))
+        ? `${currentOrigin}/payment_success?orderId=${orderId}`
+        : (surl || `https://hivago.vercel.app/payment_success?orderId=${orderId}`);
+
+    const effectiveFurl = (currentOrigin && !currentOrigin.startsWith('file:'))
+        ? `${currentOrigin}/payment_failed?orderId=${orderId}`
+        : (furl || `https://hivago.vercel.app/payment_failed?orderId=${orderId}`);
+
+    // Automatically submit form on web to prevent iframe X-Frame-Options blocking
+    useEffect(() => {
+        if (Platform.OS === 'web' && typeof document !== 'undefined') {
+            const timer = setTimeout(() => {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = payUBaseUrl;
+                
+                const params: Record<string, string> = {
+                    key,
+                    txnid: txnId,
+                    amount: String(amount),
+                    productinfo: productInfo,
+                    firstname: firstName,
+                    email,
+                    phone,
+                    surl: effectiveSurl,
+                    furl: effectiveFurl,
+                    hash
+                };
+
+                Object.keys(params).forEach(k => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = k;
+                    input.value = params[k] || '';
+                    form.appendChild(input);
+                });
+
+                document.body.appendChild(form);
+                form.submit();
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+    }, [payUBaseUrl, key, txnId, amount, productInfo, firstName, email, phone, effectiveSurl, effectiveFurl, hash]);
 
     const selfSubmittingFormHtml = `
       <html>
@@ -67,8 +116,8 @@ export const PaymentWebViewScreen = ({ route, navigation }: { route: any, naviga
             <input type="hidden" name="firstname" value="${firstName}" />
             <input type="hidden" name="email" value="${email}" />
             <input type="hidden" name="phone" value="${phone}" />
-            <input type="hidden" name="surl" value="${surl}" />
-            <input type="hidden" name="furl" value="${furl}" />
+            <input type="hidden" name="surl" value="${effectiveSurl}" />
+            <input type="hidden" name="furl" value="${effectiveFurl}" />
             <input type="hidden" name="hash" value="${hash}" />
           </form>
         </body>
@@ -79,8 +128,8 @@ export const PaymentWebViewScreen = ({ route, navigation }: { route: any, naviga
         const url = navState.url;
         
         // Check if redirected to Success or Failure URL
-        const isSuccess = url.includes(surl) || url.includes('payment/success') || url.includes('/payments/success');
-        const isFailure = url.includes(furl) || url.includes('payment/failure') || url.includes('/payments/failure') || url.includes('payment/cancel');
+        const isSuccess = url.includes(effectiveSurl) || url.includes('payment_success') || url.includes('payment/success') || url.includes('/payments/success');
+        const isFailure = url.includes(effectiveFurl) || url.includes('payment_failed') || url.includes('payment/failure') || url.includes('/payments/failure') || url.includes('payment/cancel');
 
         if (isSuccess) {
             setLoading(true);
@@ -101,7 +150,7 @@ export const PaymentWebViewScreen = ({ route, navigation }: { route: any, naviga
             }
         } else if (isFailure) {
             showToast("Payment cancelled or failed", "error");
-            navigation.goBack();
+            navigation.navigate('PaymentFailed', { orderId });
         }
     };
 
@@ -114,19 +163,26 @@ export const PaymentWebViewScreen = ({ route, navigation }: { route: any, naviga
                 <Text style={styles.headerTitle}>Secure Checkout</Text>
             </View>
 
-            <WebView 
-                source={{ html: selfSubmittingFormHtml }}
-                onNavigationStateChange={handleNavigationStateChange}
-                onLoadEnd={() => setLoading(false)}
-                javaScriptEnabled={true}
-                domStorageEnabled={true}
-                style={styles.webview}
-            />
+            {Platform.OS === 'web' ? (
+                <View style={styles.webContainer}>
+                    <ActivityIndicator size="large" color="#FF4732" />
+                    <Text style={styles.loadingText}>Redirecting to PayU Secure Payment Gateway...</Text>
+                </View>
+            ) : (
+                <WebView 
+                    source={{ html: selfSubmittingFormHtml }}
+                    onNavigationStateChange={handleNavigationStateChange}
+                    onLoadEnd={() => setLoading(false)}
+                    javaScriptEnabled={true}
+                    domStorageEnabled={true}
+                    style={styles.webview}
+                />
+            )}
 
-            {loading && (
+            {Platform.OS !== 'web' && loading && (
                 <View style={styles.loadingOverlay}>
                     <ActivityIndicator size="large" color="#FF4732" />
-                    <Text style={styles.loadingText}>Processing Transaction...</Text>
+                    <Text style={styles.loadingText}>Connecting to PayU Payment Gateway...</Text>
                 </View>
             )}
         </View>
@@ -155,6 +211,13 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#1F2937',
         marginLeft: 12,
+    },
+    webContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 16,
+        padding: 40,
     },
     webview: {
         flex: 1,
