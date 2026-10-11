@@ -8,6 +8,7 @@ import { useCart } from '../context/CartContext';
 import { MapPin, Search, Star, Clock, Heart, SlidersHorizontal, ChevronDown, Check, ShoppingBag, Navigation, Home, Menu, Mic, X, User, Package, LogOut, Smartphone, Truck, Share2, Globe, MessageSquare, Tv, Send, Mail, Phone } from 'lucide-react-native';
 import { FooterLogoSvg } from '../components/FooterLogoSvg';
 import { RestaurantCard } from '../components/RestaurantCard';
+import { LocationSelectorOverlay } from '../components/LocationSelectorOverlay';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_WIDTH = SCREEN_WIDTH;
@@ -45,7 +46,7 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
         filteredRestaurants, isLoading, refreshData
     } = useFilters();
 
-    const { selectedLocation, addresses, selectLocation, isLoadingGps, useDeviceLocation } = useUserLocation();
+    const { selectedLocation, addresses, selectLocation, isLoadingGps, useDeviceLocation, refreshAddresses } = useUserLocation();
     const { toggleFavorite, isFavorite } = useFavorites();
     const { showToast } = useToast();
     const { cartItems, cartTotal, isLoggedIn, refreshLoginStatus } = useCart();
@@ -175,12 +176,8 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                 <TouchableOpacity
                     className="flex-row items-center gap-2.5 flex-1"
                     onPress={() => {
-                        if (!isLoggedIn) {
-                            showToast("Please log in to change your location", "info");
-                            navigation.navigate('SignIn');
-                        } else {
-                            setIsAddressModalOpen(true);
-                        }
+                        refreshAddresses();
+                        setIsAddressModalOpen(true);
                     }}
                     activeOpacity={0.7}
                 >
@@ -193,7 +190,7 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                             <Text className="text-xs font-bold text-gray-800" numberOfLines={1}>
                                 {isLoadingGps
                                     ? 'Detecting location...'
-                                    : (selectedLocation ? selectedLocation.label || 'Home' : 'Home')}
+                                    : (selectedLocation ? selectedLocation.label || (selectedLocation.addressLine ? selectedLocation.addressLine.split(',')[0] : 'Home') : 'Select Location')}
                             </Text>
                             <ChevronDown size={14} color="#4B5563" style={{ marginLeft: 4 }} />
                         </View>
@@ -614,76 +611,12 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                 )}
             </ScrollView>
 
-            {/* Address Selection Modal */}
-            <Modal
-                visible={isAddressModalOpen}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setIsAddressModalOpen(false)}
-            >
-                <TouchableOpacity
-                    style={styles.modalOverlay}
-                    activeOpacity={1}
-                    onPress={() => setIsAddressModalOpen(false)}
-                >
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Choose Delivery Address</Text>
-
-                        {/* Device Current Location Action */}
-                        <TouchableOpacity
-                            style={styles.currentGpsOption}
-                            onPress={async () => {
-                                await useDeviceLocation();
-                                setIsAddressModalOpen(false);
-                            }}
-                        >
-                            <View style={styles.currentGpsIconWrapper}>
-                                <Navigation size={20} color="#A81C1C" />
-                            </View>
-                            <View style={styles.currentGpsTextWrapper}>
-                                <Text style={styles.currentGpsTitle}>Use Current Device Location</Text>
-                                <Text style={styles.currentGpsSubtitle}>Detect GPS coordinates • Within 5 km radius</Text>
-                            </View>
-                            {isLoadingGps && <ActivityIndicator size="small" color="#A81C1C" />}
-                        </TouchableOpacity>
-
-                        <View style={styles.modalDivider} />
-
-                        {addresses.length === 0 ? (
-                            <Text style={styles.noAddressText}>No saved addresses found. You can add one in your Profile.</Text>
-                        ) : (
-                            <ScrollView style={styles.addressList}>
-                                {addresses.map((addr) => (
-                                    <TouchableOpacity
-                                        key={addr.id}
-                                        style={[
-                                            styles.addressItem,
-                                            selectedLocation?.id === addr.id && styles.addressItemActive
-                                        ]}
-                                        onPress={() => {
-                                            selectLocation(addr);
-                                            setIsAddressModalOpen(false);
-                                        }}
-                                    >
-                                        <MapPin size={18} color={selectedLocation?.id === addr.id ? '#A81C1C' : '#6B7280'} />
-                                        <View style={styles.addressTextContainer}>
-                                            <Text style={styles.addressLabelText}>{addr.label}</Text>
-                                            <Text style={styles.addressDetailText} numberOfLines={1}>{addr.addressLine}</Text>
-                                        </View>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        )}
-
-                        <TouchableOpacity
-                            style={styles.modalCloseBtn}
-                            onPress={() => setIsAddressModalOpen(false)}
-                        >
-                            <Text style={styles.modalCloseBtnText}>Close</Text>
-                        </TouchableOpacity>
-                    </View>
-                </TouchableOpacity>
-            </Modal>
+            {/* Address Selection Modal / Full Overlay */}
+            <LocationSelectorOverlay
+                isOpen={isAddressModalOpen}
+                onClose={() => setIsAddressModalOpen(false)}
+                navigation={navigation}
+            />
 
             {/* Sort Modal */}
             <Modal
@@ -782,6 +715,7 @@ export const HomeScreen = ({ navigation }: { navigation: any }) => {
                                 style={styles.drawerItem}
                                 onPress={() => {
                                     setIsMenuDrawerOpen(false);
+                                    refreshAddresses();
                                     setIsAddressModalOpen(true);
                                 }}
                             >

@@ -29,7 +29,15 @@ interface LocationContextType {
 const LocationContext = createContext<LocationContextType | undefined>(undefined);
 
 export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [addresses, setAddresses] = useState<Address[]>([]);
+    const [addresses, setAddresses] = useState<Address[]>(() => {
+        try {
+            if (typeof localStorage !== 'undefined') {
+                const saved = localStorage.getItem('cached_addresses');
+                return saved ? JSON.parse(saved) : [];
+            }
+        } catch (_) {}
+        return [];
+    });
     const [selectedLocation, setSelectedLocation] = useState<Address | null>(null);
     const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
     const [isLoadingGps, setIsLoadingGps] = useState(false);
@@ -70,8 +78,14 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
                     setSelectedLocation(currentLoc);
                     selectedLocationRef.current = currentLoc;
-                    localStorage.setItem('selected_location', JSON.stringify(currentLoc));
-                    sessionStorage.setItem('location_asked', 'true');
+                    try {
+                        if (typeof localStorage !== 'undefined') {
+                            localStorage.setItem('selected_location', JSON.stringify(currentLoc));
+                        }
+                        if (typeof sessionStorage !== 'undefined') {
+                            sessionStorage.setItem('location_asked', 'true');
+                        }
+                    } catch (_) {}
                     setIsLoadingGps(false);
                     showToast("Using device's current location", "success");
                     resolve();
@@ -90,7 +104,7 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Initial load from local storage
     useEffect(() => {
         try {
-            const saved = localStorage.getItem('selected_location');
+            const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('selected_location') : null;
             if (saved) {
                 const parsed = JSON.parse(saved);
                 setSelectedLocation(parsed);
@@ -109,13 +123,14 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (!isTokenValid()) {
             setAddresses([]);
             try {
-                const saved = localStorage.getItem('selected_location');
-                if (saved) {
-                    const parsed = JSON.parse(saved);
-                    setSelectedLocation(parsed);
-                    selectedLocationRef.current = parsed;
-                } else {
-                    if (!selectedLocationRef.current) {
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.removeItem('cached_addresses');
+                    const saved = localStorage.getItem('selected_location');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        setSelectedLocation(parsed);
+                        selectedLocationRef.current = parsed;
+                    } else if (!selectedLocationRef.current) {
                         useDeviceLocation();
                     }
                 }
@@ -130,8 +145,13 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setIsLoadingAddresses(true);
         try {
             const data = await getAddresses();
-            const addrList = data || [];
+            const addrList = Array.isArray(data) ? data : [];
             setAddresses(addrList);
+            try {
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.setItem('cached_addresses', JSON.stringify(addrList));
+                }
+            } catch (_) {}
             
             if (addrList.length > 0) {
                 const currentSelection = selectedLocationRef.current;
@@ -150,7 +170,11 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 const defaultAdd = addrList.find(a => a.isDefault) || addrList[0];
                 setSelectedLocation(defaultAdd);
                 selectedLocationRef.current = defaultAdd;
-                localStorage.setItem('selected_location', JSON.stringify(defaultAdd));
+                try {
+                    if (typeof localStorage !== 'undefined') {
+                        localStorage.setItem('selected_location', JSON.stringify(defaultAdd));
+                    }
+                } catch (_) {}
             } else {
                 // Keep current GPS location if no database addresses exist
                 if (selectedLocationRef.current?.id !== 'current-location') {
@@ -164,9 +188,19 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
     }, [useDeviceLocation]);
 
-    // Sync on token/login changes
+    // Sync on token/login changes and mount
     useEffect(() => {
         refreshAddresses();
+
+        if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+            const handleStorageChange = (e: StorageEvent) => {
+                if (e.key === 'customer_token') {
+                    refreshAddresses();
+                }
+            };
+            window.addEventListener('storage', handleStorageChange);
+            return () => window.removeEventListener('storage', handleStorageChange);
+        }
     }, [refreshAddresses]);
 
     const selectLocation = (address: Address) => {
@@ -188,7 +222,12 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setAddresses([]);
         setSelectedLocation(null);
         selectedLocationRef.current = null;
-        localStorage.removeItem('selected_location');
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.removeItem('selected_location');
+                localStorage.removeItem('cached_addresses');
+            }
+        } catch (_) {}
     };
 
     return (

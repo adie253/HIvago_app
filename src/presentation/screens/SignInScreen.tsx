@@ -10,7 +10,7 @@ import { ArrowLeft, ShoppingBag, Menu, Home, ChevronDown, Check, Lock, User, Mai
 export const SignInScreen = ({ navigation }: { navigation: any }) => {
     const { refreshLoginStatus, cartItems } = useCart();
     const { showToast } = useToast();
-    const { selectedLocation } = useUserLocation();
+    const { selectedLocation, refreshAddresses } = useUserLocation();
 
     const [phone, setPhone] = useState('');
     const [otp, setOtp] = useState('');
@@ -62,6 +62,7 @@ export const SignInScreen = ({ navigation }: { navigation: any }) => {
             if (data.name) localStorage.setItem('customer_name', data.name);
 
             refreshLoginStatus();
+            refreshAddresses();
 
             const isFirstTime = Boolean(data.isNewCustomer || data.isNewUser || data.isNew || data.isFirstTime);
             if (isFirstTime) {
@@ -89,6 +90,7 @@ export const SignInScreen = ({ navigation }: { navigation: any }) => {
             showToast("Registration completed!", "success");
 
             refreshLoginStatus();
+            refreshAddresses();
             navigation.navigate('Home');
         } catch (e: any) {
             showToast(e.message || "Failed to register details", "error");
